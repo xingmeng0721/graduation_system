@@ -7,4 +7,7 @@ urlpatterns = [
     path('api/admin/', include('adminapp.urls')),
     # 所有 /api/student/ 开头的 URL 交给 studentapp 处理 (学生相关)
     path("api/student/", include("studentapp.urls")),
+
+    path("api/teacher/", include("teacherapp.urls")),
 ]
+#api/student/login/

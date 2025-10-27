@@ -1,16 +1,14 @@
 <template>
-  <div class="dashboard-layout">
+  <div class="student-dashboard-layout">
     <aside class="sidebar">
       <div class="sidebar-header">
-        <h3>管理后台</h3>
+        <h3>学生管理系统</h3>
       </div>
       <nav class="sidebar-nav">
-        <router-link to="/dashboard/users">管理员数据</router-link>
-        <router-link to="/dashboard/register">注册新用户</router-link>
-        <router-link to="/dashboard/students">学生管理</router-link>
-        <router-link to="/dashboard/teachers">教师管理</router-link>
-        <router-link to="/dashboard/mutual-selection">毕业设计配置</router-link>
-        <router-link to="/dashboard/auto-assignment">自动分配</router-link>
+        <router-link to="/student/dashboard/profile" v-if="isStudent">个人信息管理</router-link>
+        <router-link to="/student/dashboard/team" v-if="isStudent">团队管理</router-link>
+        <router-link to="/student/dashboard/mentor" v-if="isStudent">导师选择</router-link>
+        <router-link to="/student/dashboard/results" v-if="isStudent">结果查看</router-link>
       </nav>
       <div class="sidebar-footer">
         <button @click="handleLogout" class="btn-logout">退出登录</button>
@@ -24,23 +22,21 @@
 </template>
 
 <script setup>
-
 import { useRouter } from 'vue-router';
 
+// 判断是否为学生
+const isStudent = !!localStorage.getItem('studentAccessToken');
 const router = useRouter();
 
 const handleLogout = () => {
-  localStorage.removeItem('accessToken');
-  localStorage.removeItem('refreshToken');
-  router.push('/login');
+  localStorage.removeItem('studentAccessToken');  // 清除学生登录令牌
+  localStorage.removeItem('studentRefreshToken'); // 清除学生刷新令牌
+  router.push('/login');  // 跳转到登录页面
 };
-
 </script>
 
-
-
 <style scoped>
-.dashboard-layout {
+.student-dashboard-layout {
   display: flex;
   height: 100vh;
 }
@@ -76,11 +72,6 @@ const handleLogout = () => {
 .sidebar-footer {
   padding: 20px;
   border-top: 1px solid #34495e;
-}
-.user-info {
-  margin-bottom: 15px;
-  text-align: center;
-  font-weight: bold;
 }
 .btn-logout {
   width: 100%;

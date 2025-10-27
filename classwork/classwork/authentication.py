@@ -1,6 +1,7 @@
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from adminapp.models import AdminUser
 from studentapp.models import Student
+from teacherapp.models import teacher
 
 
 class UniversalJWTAuthentication(JWTAuthentication):
@@ -28,6 +29,12 @@ class UniversalJWTAuthentication(JWTAuthentication):
             try:
                 return Student.objects.get(pk=user_id)
             except Student.DoesNotExist:
+                return None
+
+        elif user_type == 'teacher':
+            try:
+                return teacher.objects.get(pk=user_id)
+            except teacher.DoesNotExist:
                 return None
 
         # 如果没有 user_type 或 user_type 不匹配，则认证失败

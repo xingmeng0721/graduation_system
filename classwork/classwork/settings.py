@@ -42,10 +42,13 @@ INSTALLED_APPS = [
     "corsheaders",
     "adminapp",
     "studentapp",
+    "teacherapp",
+    'teamapp',
 ]
 
 
-AUTH_USER_MODEL = 'studentapp.Student'
+# AUTH_USER_MODEL = 'studentapp.Student'
+
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -74,13 +77,16 @@ REST_FRAMEWORK = {
         # 保持默认权限设置为 IsAuthenticated
         'rest_framework.permissions.IsAuthenticated',)
 }
+
+
 AUTHENTICATION_BACKENDS = [
     'adminapp.authentication.AdminUserBackend',
-    'django.contrib.auth.backends.ModelBackend',
+    'adminapp.authentication.MultiModelBackend'
 ]
 
 SIMPLE_JWT = {
-    'USER_ID_FIELD': 'stu_id',
+    'USER_ID_FIELD': 'pk',
+    'USER_ID_CLAIM': 'user_id',
 }
 
 
@@ -108,17 +114,30 @@ WSGI_APPLICATION = "classwork.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-import pymysql
-pymysql.install_as_MySQLdb()
-
+# import pymysql
+# pymysql.install_as_MySQLdb()
+#
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.mysql',
+#         'NAME': 'graduation_system',
+#         'USER': 'gs',
+#         'PASSWORD': '123456',
+#         'HOST': '127.0.0.1',
+#         'PORT': '3306',
+#     }
+# }
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'graduation_system',
-        'USER': 'gs',
-        'PASSWORD': '123456',
-        'HOST': '127.0.0.1',
-        'PORT': '3306',
+        'ENGINE': 'mssql',
+        'NAME': 'DB_2',
+        'USER': 'srz',
+        'PASSWORD': 'db_zsr',
+        'HOST': 'bzmtxh.top',
+        'PORT': '24133',
+        'OPTIONS': {
+            'driver': 'ODBC Driver 17 for SQL Server',
+        },
     }
 }
 
@@ -163,3 +182,12 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.qq.com'  # 例如QQ邮箱
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = '2188911095@qq.com'
+EMAIL_HOST_PASSWORD = 'koxrmemkfulmebch'  # 注意是授权码
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+

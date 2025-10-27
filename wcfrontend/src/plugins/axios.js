@@ -14,7 +14,9 @@ apiClient.interceptors.request.use(
     if (url.startsWith('student/')) {
       // 如果是请求学生API, 就使用学生Token
       token = localStorage.getItem('studentAccessToken');
-    } else {
+    } else if (url.startsWith('teacher/')) {
+      token = localStorage.getItem('teacherAccessToken');
+    }else {
       // 否则，默认使用管理员Token (适用于 'admin/' 开头的URL)
       token = localStorage.getItem('accessToken');
     }
@@ -41,6 +43,8 @@ apiClient.interceptors.response.use(
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('studentAccessToken');
       localStorage.removeItem('studentRefreshToken');
+      localStorage.removeItem('teacherAccessToken');
+      localStorage.removeItem('teacherRefreshToken');
 
       // 动态导入 router 以避免循环依赖
       const router = (await import('../router')).default;
