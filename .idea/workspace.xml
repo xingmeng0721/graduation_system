@@ -4,24 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="5a3f43bc-5135-4223-8a01-96f06d2dbf59" name="更改" comment="第一二版">
-      <change afterPath="$PROJECT_DIR$/classwork/teamapp/serializers.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/classwork/teamapp/urls.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/adminapp/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/adminapp/serializers.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/adminapp/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/adminapp/views.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/classwork/urls.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/classwork/urls.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/studentapp/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/studentapp/serializers.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/teacherapp/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/teacherapp/serializers.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/teamapp/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/teamapp/models.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/teamapp/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/teamapp/views.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wcfrontend/src/layouts/StudentDashboard.vue" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/layouts/StudentDashboard.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wcfrontend/src/pages/StudentManagement.vue" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/pages/StudentManagement.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wcfrontend/src/pages/StudentTeam.vue" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/pages/StudentTeam.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wcfrontend/src/plugins/axios.js" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/plugins/axios.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wcfrontend/src/router/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/router/index.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wcfrontend/src/services/api.js" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/services/api.js" afterDir="false" />
-    </list>
+    <list default="true" id="5a3f43bc-5135-4223-8a01-96f06d2dbf59" name="更改" comment="第一二版" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -113,7 +96,7 @@
       <recent name="D:\DjangoProject\django\classwork\studentapp" />
     </key>
   </component>
-  <component name="RunManager" selected="npm.dev">
+  <component name="RunManager" selected="Django 服务器.未命名">
     <configuration name="未命名" type="Python.DjangoServer" factoryName="Django server" nameIsGenerated="true">
       <module name="django" />
       <option name="ENV_FILES" value="" />
@@ -182,7 +165,7 @@
       <workItem from="1761512367548" duration="22547000" />
       <workItem from="1761536343809" duration="4936000" />
       <workItem from="1761563476381" duration="15462000" />
-      <workItem from="1761583576962" duration="1417000" />
+      <workItem from="1761583576962" duration="2647000" />
     </task>
     <task id="LOCAL-00001" summary="第一版">
       <option name="closed" value="true" />
@@ -208,7 +191,15 @@
       <option name="project" value="LOCAL" />
       <updated>1761562489936</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="第一二版">
+      <option name="closed" value="true" />
+      <created>1761645177281</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1761645177281</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
