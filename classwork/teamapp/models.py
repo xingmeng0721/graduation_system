@@ -8,6 +8,8 @@ class Group(models.Model):
     """
     group_id = models.AutoField(primary_key=True)
     group_name = models.CharField(max_length=255, verbose_name='分组名称')
+    project_title = models.CharField(max_length=255, verbose_name="项目标题", blank=True)
+    project_description = models.TextField(verbose_name="项目简介", blank=True)
 
     # 关联到互选活动，允许为空，以保证在没有活动时其他功能也能正常使用
     event = models.ForeignKey(
@@ -18,13 +20,34 @@ class Group(models.Model):
         null=True,
         blank=True
     )
+    preferred_advisor_1 = models.ForeignKey(
+        'teacherapp.teacher',
+        on_delete=models.SET_NULL,
+        related_name='preferred_as_first',
+        verbose_name='第一志愿导师',
+        null=True, blank=True
+    )
+    preferred_advisor_2 = models.ForeignKey(
+        'teacherapp.teacher',
+        on_delete=models.SET_NULL,
+        related_name='preferred_as_second',
+        verbose_name='第二志愿导师',
+        null=True, blank=True
+    )
+    preferred_advisor_3 = models.ForeignKey(
+        'teacherapp.teacher',
+        on_delete=models.SET_NULL,
+        related_name='preferred_as_third',
+        verbose_name='第三志愿导师',
+        null=True, blank=True
+    )
 
     # 直接关联指导老师
     advisor = models.ForeignKey(
         'teacherapp.teacher',
         on_delete=models.SET_NULL,
         related_name='advised_groups',
-        verbose_name='指导老师',
+        verbose_name='最终指导老师',
         null=True,
         blank=True
     )

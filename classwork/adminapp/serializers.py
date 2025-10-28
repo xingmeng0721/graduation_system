@@ -156,6 +156,16 @@ class StudentListSerializer(serializers.ModelSerializer):
         """
         return hasattr(obj, 'led_group') and obj.led_group is not None
 
+class SimpleStudentSerializer(serializers.ModelSerializer):
+    """
+    用于嵌套在其他序列化器中的简化版学生信息序列化器。
+    """
+    major_name = serializers.CharField(source='major.major_name', read_only=True)
+
+    class Meta:
+        model = Student
+        fields = ['stu_id', 'stu_no', 'stu_name', 'major_name'] # 只包含必要信息
+
 class MajorSerializer(serializers.ModelSerializer):
     """
    用于管理员查看专业列表的序列化器
@@ -203,8 +213,14 @@ class MutualSelectionEventListSerializer(serializers.ModelSerializer):
     """
     # 使用嵌套序列化器来显示教师和学生的详细信息
     teachers = TeacherProfileSerializer(many=True, read_only=True)
-    students = StudentListSerializer(many=True, read_only=True)
+    students = SimpleStudentSerializer(many=True, read_only=True)
+    teacher_count = serializers.IntegerField(read_only=True)
+    student_count = serializers.IntegerField(read_only=True)
+
 
     class Meta:
         model = MutualSelectionEvent
-        fields = ['event_id', 'event_name', 'start_time', 'end_time', 'teachers', 'students']
+        fields = [
+            'event_id', 'event_name', 'start_time', 'end_time',
+            'teacher_count', 'student_count', 'teachers', 'students'
+        ]

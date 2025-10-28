@@ -7,8 +7,8 @@
       <nav class="sidebar-nav">
         <router-link to="/student/dashboard/profile" v-if="isStudent">个人信息管理</router-link>
         <router-link to="/student/dashboard/team" v-if="isStudent">团队管理</router-link>
-        <router-link to="/student/dashboard/mentor" v-if="isStudent">导师选择</router-link>
-        <router-link to="/student/dashboard/results" v-if="isStudent">结果查看</router-link>
+<!--        <router-link to="/student/dashboard/mentor" v-if="isStudent">导师选择</router-link>-->
+<!--        <router-link to="/student/dashboard/results" v-if="isStudent">结果查看</router-link>-->
       </nav>
       <div class="sidebar-footer">
         <button @click="handleLogout" class="btn-logout">退出登录</button>

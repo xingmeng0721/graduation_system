@@ -8,16 +8,24 @@ const apiClient = axios.create({
 
 apiClient.interceptors.request.use(
   (config) => {
-    const url = config.url || '';
+    // 尝试获取当前活跃的学生或教师Token
+    const studentToken = localStorage.getItem('studentAccessToken');
+    const teacherToken = localStorage.getItem('teacherAccessToken');
     let token = null;
 
-    if (url.startsWith('student/')) {
-      // 如果是请求学生API, 就使用学生Token
-      token = localStorage.getItem('studentAccessToken');
-    } else if (url.startsWith('teacher/')) {
-      token = localStorage.getItem('teacherAccessToken');
-    }else {
-      // 否则，默认使用管理员Token (适用于 'admin/' 开头的URL)
+    // 逻辑调整：
+    // 1. 如果有学生Token，就用学生Token。
+    //    这覆盖了 'student/' 和 'teams/' (在学生登录时) 的场景。
+    if (studentToken) {
+      token = studentToken;
+    }
+    // 2. 如果没有学生Token，但有教师Token，就用教师Token。
+    //    这覆盖了 'teacher/' 和 'teams/' (在教师登录时) 的场景。
+    else if (teacherToken) {
+      token = teacherToken;
+    }
+    // 3. 如果两者都没有，才使用管理员Token。
+    else {
       token = localStorage.getItem('accessToken');
     }
 

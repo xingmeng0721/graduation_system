@@ -9,5 +9,6 @@ urlpatterns = [
     path("api/student/", include("studentapp.urls")),
 
     path("api/teacher/", include("teacherapp.urls")),
+
+    path('api/teams/', include('teamapp.urls')),
 ]
-#api/student/login/

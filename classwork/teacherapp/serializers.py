@@ -24,3 +24,4 @@ class TeacherProfileSerializer(serializers.ModelSerializer):
             'teacher_id', 'teacher_no', 'teacher_name',
             'phone', 'email', 'research_direction', 'introduction'
         )
+

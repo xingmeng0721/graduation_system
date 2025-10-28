@@ -4,6 +4,7 @@ import apiClient from '../plugins/axios';
 const ADMIN_BASE = 'admin/';
 const STUDENT_BASE = 'student/';
 const TEACHER_BASE = 'teacher/';
+const TEAM_BASE = 'teams/';
 
 export default {
   login(data) {
@@ -16,7 +17,8 @@ export default {
     const formData = new FormData();
     formData.append('file', file);
     return apiClient.post(`${ADMIN_BASE}register/bulk/`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 60000, // 60秒超时
     });
   },
   downloadTemplate() {
@@ -29,11 +31,12 @@ export default {
       responseType: 'blob',
     });
   },
-   bulkRegisterStudents(file) {
+  bulkRegisterStudents(file) {
     const formData = new FormData();
     formData.append('file', file);
     return apiClient.post(`${ADMIN_BASE}students/register/bulk/`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 60000, // 60秒超时
     });
   },
   downloadTeacherTemplate() {
@@ -45,7 +48,8 @@ export default {
     const formData = new FormData();
     formData.append('file', file);
     return apiClient.post(`${ADMIN_BASE}teachers/register/bulk/`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 60000, // 60秒超时
     });
   },
   getUsers() {
@@ -121,6 +125,30 @@ export default {
   },
   updateStudentProfile(studentData) {
   return apiClient.put(`${STUDENT_BASE}profile/`, studentData);
+  },
+  getActiveEventForStudent() {
+    // 这个函数会调用我们之前在后端创建的 /api/teams/active-event/ 接口
+    return apiClient.get(`${TEAM_BASE}active-event/`);
+  },
+   getMyTeam() {
+    // 删除了多余的 'teams/'
+    return apiClient.get(`${TEAM_BASE}my-team/`);
+  },
+  createTeam(data) {
+    // 删除了多余的 'teams/'
+    return apiClient.post(`${TEAM_BASE}create-team/`, data);
+  },
+  joinTeam(groupId) {
+    // 删除了多余的 'teams/'
+    return apiClient.post(`${TEAM_BASE}${groupId}/join/`);
+  },
+  leaveTeam() {
+    // 删除了多余的 'teams/'
+    return apiClient.post(`${TEAM_BASE}leave-team/`);
+  },
+  getJoinableTeams() {
+    // 删除了多余的 'teams/'
+    return apiClient.get(`${TEAM_BASE}joinable/`);
   },
   teacherLogin(credentials) {
     return apiClient.post(`${TEACHER_BASE}login/`, credentials);

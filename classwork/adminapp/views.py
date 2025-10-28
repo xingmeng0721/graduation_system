@@ -1,3 +1,4 @@
+from django.db.models import Count
 from django.utils import timezone
 import django_filters
 from django.contrib.auth import authenticate
@@ -20,6 +21,7 @@ from django.http import HttpResponse
 from django.db import transaction
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from studentapp.models import Student, Major
+from teamapp.models import Group
 
 
 class RegisterView(generics.CreateAPIView):
@@ -439,9 +441,9 @@ class StudentManagementViewSet(viewsets.ModelViewSet):
     """
     queryset = Student.objects.select_related(
         'major',
-        'membership__group'  # 预加载学生 -> 成员关系 -> 团队
+        'membership__group'
     ).prefetch_related(
-        'led_group'  # 预加载学生 -> 领导的团队 (OneToOne反向)
+        'led_group'
     ).all().order_by('stu_id')
 
     # 启用 django-filter 后端
@@ -454,7 +456,6 @@ class StudentManagementViewSet(viewsets.ModelViewSet):
         """根据不同的操作(action)，使用不同的序列化器。"""
         if self.action == 'list':
             return StudentListSerializer
-        # 对于 create, update, retrieve 等操作，使用更详细的序列化器
         return StudentManagementSerializer
 
     # 3. 新增：批量删除的自定义 action
@@ -504,7 +505,12 @@ class MutualSelectionEventViewSet(viewsets.ModelViewSet):
     - 批量删除。
     """
     # 预取相关对象以优化查询性能
-    queryset = MutualSelectionEvent.objects.prefetch_related('teachers', 'students').all().order_by('-start_time')
+    queryset = MutualSelectionEvent.objects.prefetch_related(
+        'teachers', 'students__major'
+    ).annotate(
+        teacher_count=Count('teachers', distinct=True),
+        student_count=Count('students', distinct=True)
+    ).all().order_by('-start_time')
 
     # 配置搜索和筛选
     filter_backends = [filters.SearchFilter, DjangoFilterBackend]

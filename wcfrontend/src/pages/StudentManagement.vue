@@ -30,7 +30,7 @@
         </div>
         <div v-if="bulkError" class="error-message">{{ bulkError }}</div>
       </div>
-      <!-- 添加新学生表单 -->
+      <!-- 其他模板部分保持不变 -->
       <div class="form-card">
         <h2>添加新学生</h2>
         <form @submit.prevent="addStudent">
@@ -192,34 +192,24 @@
   </div>
 </template>
 
-
-
-
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue';
 import api from '../services/api';
 
 const addStudentError = ref(null);
 const addStudentSuccess = ref(null);
-
 const listError = ref(null);
 const listSuccess = ref(null);
-
 const students = ref([]);
 const majors = ref([]);
 const error = ref(null);
 const success = ref(null);
-
 const searchQuery = ref('');
 const selectedGrade = ref('');
 const selectedMajor = ref('');
-
-
 const selectedStudentIds = ref(new Set());
-
 const editingStudent = ref(null);
 const editError = ref(null);
-
 const newStudent = ref({
   stu_no: '',
   stu_name: '',
@@ -229,33 +219,22 @@ const newStudent = ref({
   major: '',
   email: '',
 });
-
-
 const selectedFile = ref(null);
 const isUploading = ref(false);
 const bulkResults = ref(null);
 const bulkError = ref(null);
 
-
 const fetchData = async () => {
-  listError.value = null;
-
   try {
-    const studentsRes = await api.getStudents();
+    const [studentsRes, majorsRes] = await Promise.all([
+      api.getStudents(),
+      api.getMajors(),
+    ]);
     students.value = studentsRes.data;
-  } catch (err) {
-    console.error("Failed to fetch students:", err);
-    error.value = "加载学生列表失败。";
-  }
-
-  try {
-    const majorsRes = await api.getMajors();
     majors.value = majorsRes.data;
   } catch (err) {
-    console.error("Failed to fetch majors:", err);
-    if (!error.value) {
-      error.value = "加载专业列表失败，筛选功能可能受影响。";
-    }
+    console.error("Failed to fetch initial data:", err);
+    listError.value = "加载核心数据失败，请刷新页面。";
   }
 };
 
@@ -301,23 +280,19 @@ const openEditModal = (student) => {
 
 const handleUpdateStudent = async () => {
   if (!editingStudent.value) return;
-
   const studentData = { ...editingStudent.value };
   if (!studentData.password) {
     delete studentData.password;
   }
-
   try {
     await api.updateStudent(studentData.stu_id, studentData);
     listSuccess.value = `学生 ${studentData.stu_name} 的信息已更新。`;
     closeEditModal();
-    await fetchData(); // 刷新列表
+    await fetchData();
   } catch (err) {
-    console.error("Failed to update student:", err);
     editError.value = "更新失败：" + (err.response?.data?.detail || '请检查输入。');
   }
 };
-
 
 const closeEditModal = () => {
   editingStudent.value = null;
@@ -346,10 +321,7 @@ const handleDeleteSingle = async (student) => {
 };
 
 const handleDeleteSelected = async () => {
-  if (selectedStudentIds.value.size === 0) {
-    alert("请先选择要删除的学生。");
-    return;
-  }
+  if (selectedStudentIds.value.size === 0) return;
   if (confirm(`确定要删除选中的 ${selectedStudentIds.value.size} 名学生吗？`)) {
     try {
       const idsToDelete = Array.from(selectedStudentIds.value);
@@ -363,35 +335,22 @@ const handleDeleteSelected = async () => {
   }
 };
 
-
 const addStudent = async () => {
   addStudentError.value = null;
   addStudentSuccess.value = null;
-  listSuccess.value = null; // 同时清理其他区域的消息，避免混淆
-  listError.value = null
   try {
-    // 1. 发送API请求，并接收返回的数据
     const response = await api.createStudent(newStudent.value);
-
-    // 2. 使用API返回的数据中的姓名来显示成功信息
-    const createdStudentName = response.data.stu_name;
-    addStudentSuccess.value = `学生 ${createdStudentName} 添加成功！`;
-
-    // 3. 清空表单
+    addStudentSuccess.value = `学生 ${response.data.stu_name} 添加成功！`;
     Object.keys(newStudent.value).forEach(key => newStudent.value[key] = '');
-
-    // 4. 重新加载学生列表
-    fetchData();
+    await fetchData();
   } catch (err) {
-    console.error("Failed to add student:", err);
     addStudentError.value = "添加失败：" + (err.response?.data?.detail || '请检查输入。');
   }
 };
 
-
 const handleFileChange = (event) => {
   selectedFile.value = event.target.files[0];
-  bulkResults.value = null; // 清除旧的结果
+  bulkResults.value = null;
   bulkError.value = null;
 };
 
@@ -406,11 +365,11 @@ const handleDownloadTemplate = async () => {
     link.click();
     link.remove();
   } catch (err) {
-    console.error("Failed to download template:", err);
     bulkError.value = "下载模板失败。";
   }
 };
 
+// --- 最终解决方案 ---
 const handleBulkUpload = async () => {
   if (!selectedFile.value) {
     bulkError.value = "请先选择一个文件。";
@@ -422,30 +381,31 @@ const handleBulkUpload = async () => {
 
   try {
     const response = await api.bulkRegisterStudents(selectedFile.value);
-
-    if (response && response.data && typeof response.data.success_count !== 'undefined') {
-      bulkResults.value = response.data;
-    } else {
-      success.value = "批量操作已提交。";
-    }
-
+    // 无论如何，先显示后端返回的结果
+    bulkResults.value = response.data;
   } catch (err) {
     console.error("Failed to bulk register:", err);
-    bulkError.value = "上传失败：" + (err.response?.data?.error || '服务器发生未知错误。');
-
+    // 如果API调用出错（例如返回400状态码）
+    // 检查响应体中是否有数据，如果有，就显示它
+    if (err.response && err.response.data) {
+        bulkResults.value = err.response.data;
+        // 并且额外设置一个全局错误提示
+        bulkError.value = `上传处理完成，但有 ${err.response.data.failure_count || 0} 个条目失败。`;
+    } else {
+        // 如果是网络错误或其他没有响应体的错误
+        bulkError.value = "上传失败：" + (err.message || '服务器发生未知错误。');
+    }
   } finally {
-    console.log("Refreshing data after bulk upload attempt...");
-    await fetchData();
-
     isUploading.value = false;
+    // 清空文件输入框
     if (document.querySelector('input[type=file]')) {
       document.querySelector('input[type=file]').value = '';
     }
     selectedFile.value = null;
+    // 刷新列表数据
+    await fetchData();
   }
 };
-
-onMounted(fetchData);
 </script>
 
 <style scoped>
@@ -457,7 +417,7 @@ label { margin-bottom: 8px; font-weight: 600; }
 input[type="text"], input[type="password"], input[type="email"], select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
 .btn-submit { margin-top: 20px; padding: 12px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background-color 0.2s; }
 .btn-submit:disabled { background-color: #a0cffc; cursor: not-allowed; }
-.error-message, .success-message { text-align: center; margin-top: 15px; padding: 10px; border-radius: 4px; }
+.error-message, .success-message { text-align: left; margin-top: 15px; padding: 10px; border-radius: 4px; }
 .error-message { color: #dc3545; background-color: #f8d7da; }
 .success-message { color: #155724; background-color: #d4edda; }
 table { width: 100%; border-collapse: collapse; margin-top: 20px; }
@@ -469,7 +429,7 @@ th { background-color: #f2f2f2; }
 .file-name-display { margin-top: 15px; font-style: italic; color: #555; }
 .bulk-results { margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px; }
 .bulk-results h4 { margin-bottom: 10px; }
-.bulk-results .success-message, .bulk-results .error-message { text-align: left; margin: 5px 0; }
+.bulk-results .success-message, .bulk-results .error-message { text-align: left; margin: 5px 0; padding: 5px 10px; }
 .failed-list { list-style-type: none; padding-left: 0; margin-top: 10px; }
 .failed-list li { background-color: #f8d7da; color: #721c24; padding: 8px; border-radius: 4px; margin-bottom: 5px; font-size: 0.9em; }
 .list-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; margin-bottom: 20px; }
@@ -482,7 +442,6 @@ th { background-color: #f2f2f2; }
 .btn-danger { padding: 8px 15px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; }
 .btn-danger-small { padding: 5px 10px; font-size: 0.8em; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; }
 table th:first-child, table td:first-child { width: 40px; text-align: center; }
-.filters { display: flex; gap: 20px; align-items: flex-end; }
 .filters input[type="text"] { padding: 8px; }
 .btn-secondary-small {
   padding: 5px 10px; font-size: 0.8em; background-color: #6c757d;

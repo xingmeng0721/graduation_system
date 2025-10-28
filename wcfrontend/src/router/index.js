@@ -84,6 +84,8 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const adminToken = localStorage.getItem('accessToken');
   const studentToken = localStorage.getItem('studentAccessToken');
+  const teacherToken = localStorage.getItem('teacherAccessToken');
+  const requiresTeacherAuth = to.matched.some(record => record.meta.requiresTeacherAuth);
 
   const requiresAdminAuth = to.matched.some(record => record.meta.requiresAuth);
   const requiresStudentAuth = to.matched.some(record => record.meta.requiresStudentAuth);
@@ -92,7 +94,9 @@ router.beforeEach((to, from, next) => {
     next({ name: 'Login', query: { message: 'unauthorized' } });
   } else if (requiresStudentAuth && !studentToken) {
     next({ name: 'Login', query: { message: 'unauthorized' } });
-  } else {
+  } else if (requiresTeacherAuth && !teacherToken) {
+    next({ name: 'Login', query: { message: 'unauthorized' } });
+  }else {
     next();
   }
 });

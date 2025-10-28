@@ -1,158 +1,245 @@
 <template>
-  <div class="team-page">
-    <h2>我的团队</h2>
+  <div class="page-container">
+    <h1>我的团队</h1>
+    <div v-if="loading" class="loading-state">正在加载团队信息...</div>
+    <div v-if="error" class="error-message">{{ error }}</div>
 
-```
-<!-- 若已加入团队 -->
-<div v-if="team">
-  <div class="team-info">
-    <h3>{{ team.name }}</h3>
-    <p>组长：{{ team.leader_name }}</p>
+    <!-- 场景一：已加入团队 -->
+    <div v-if="myTeam && !loading" class="team-container">
+      <!-- 左侧：团队信息 -->
+      <div class="team-info-card">
+        <h2>{{ myTeam.group_name }}</h2>
+        <p class="event-name">所属活动: {{ myTeam.event_name }}</p>
 
-    <h4>成员列表：</h4>
-    <ul>
-      <li v-for="member in team.members" :key="member.id">{{ member.stu_name }}</li>
-    </ul>
+        <div class="project-section">
+          <h3>项目信息 <button v-if="isCaptain" @click="openEditProjectModal" class="btn-edit-small">编辑</button></h3>
+          <h4>{{ myTeam.project_title || '尚未填写项目标题' }}</h4>
+          <p>{{ myTeam.project_description || '尚未填写项目简介' }}</p>
+        </div>
 
-    <div class="team-actions">
-      <button class="btn btn-danger" @click="leaveTeam">退出团队</button>
-    </div>
-  </div>
-</div>
+        <div class="advisor-section">
+          <h3>志愿导师 <button v-if="isCaptain" @click="openEditAdvisorsModal" class="btn-edit-small">选择</button></h3>
+          <p>第一志愿: {{ myTeam.preferred_advisor_1?.teacher_name || '未选择' }}</p>
+          <p>第二志愿: {{ myTeam.preferred_advisor_2?.teacher_name || '未选择' }}</p>
+          <p>第三志愿: {{ myTeam.preferred_advisor_3?.teacher_name || '未选择' }}</p>
+        </div>
 
-<!-- 若未加入团队 -->
-<div v-else>
-  <div class="create-join-section">
-    <h3>你还没有加入任何团队</h3>
-    <div class="actions">
-      <button class="btn btn-primary" @click="createTeam">创建团队</button>
+        <div class="final-advisor-section">
+          <h3>最终指导老师</h3>
+          <p class="final-advisor">{{ myTeam.advisor?.teacher_name || '待分配' }}</p>
+        </div>
 
-      <div class="join-team">
-        <input v-model="joinCode" placeholder="输入邀请码加入团队" />
-        <button class="btn btn-success" @click="joinTeam">加入</button>
+        <div class="actions-bar">
+          <button @click="handleLeaveTeam" class="btn btn-danger">
+            {{ isCaptain ? '解散团队' : '退出团队' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- 右侧：成员管理 -->
+      <div class="team-members-card">
+        <h3>团队成员 ({{ myTeam.members.length }})
+          <button v-if="isCaptain" @click="openInviteModal" class="btn-primary-small">邀请新成员</button>
+        </h3>
+        <ul>
+          <li v-for="member in myTeam.members" :key="member.stu_id">
+            {{ member.stu_name }} ({{ member.stu_no }})
+            <span v-if="member.stu_id === myTeam.captain.stu_id" class="captain-badge">队长</span>
+            <button v-if="isCaptain && member.stu_id !== myTeam.captain.stu_id" @click="removeMember(member)" class="btn-remove-small">移除</button>
+          </li>
+        </ul>
       </div>
     </div>
-  </div>
-</div>
-```
 
+    <!-- 场景二：未加入团队 -->
+    <div v-if="!myTeam && !loading && activeEvent" class="no-team-container">
+      <div class="action-card">
+        <h3>创建我的团队</h3>
+        <p>您正在参与活动 “{{ activeEvent.event_name }}”。创建一个团队来开始您的项目吧！</p>
+        <form @submit.prevent="handleCreateTeam">
+          <div class="form-group">
+            <label>团队名称</label>
+            <input v-model="newTeam.group_name" required placeholder="例如：AI图像识别小组">
+          </div>
+          <div class="form-group">
+            <label>项目标题</label>
+            <input v-model="newTeam.project_title" required placeholder="一个响亮的项目名称">
+          </div>
+          <div class="form-group">
+            <label>项目简介</label>
+            <textarea v-model="newTeam.project_description" required placeholder="简单描述一下你们想做什么"></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary">确认创建，成为队长</button>
+        </form>
+      </div>
+      <div class="action-card">
+        <h3>或加入现有团队</h3>
+        <p>查看当前活动中可以加入的团队列表。</p>
+        <button @click="fetchJoinableTeams" class="btn btn-secondary">查找团队</button>
+      </div>
+    </div>
+
+    <!-- 场景三：无进行中的活动 -->
+    <div v-if="!activeEvent && !loading" class="no-event-card">
+        <h3>当前没有正在进行的互选活动</h3>
+        <p>请等待管理员开启新的活动后再进行组队操作。</p>
+    </div>
+
+    <!-- 弹窗：邀请成员 -->
+    <div v-if="isInviteModalVisible" class="modal-overlay" @click.self="isInviteModalVisible = false">
+      <div class="modal-content">
+        <h2>邀请新成员</h2>
+        <p>从当前活动中选择未分组的学生加入您的团队。</p>
+        <div v-for="student in availableStudents" :key="student.stu_id" class="student-invite-item">
+          <span>{{ student.stu_name }} ({{ student.stu_no }})</span>
+          <button @click="inviteStudent(student)">邀请</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
-import apiClient from "../plugins/axios";
+import { ref, onMounted, computed } from 'vue';
+import api from '../services/api'; // 假设api.js已更新
 
-const team = ref(null);
-const joinCode = ref("");
+const myTeam = ref(null);
+const activeEvent = ref(null); // 当前学生参与的活动
+const loading = ref(true);
+const error = ref(null);
+const isCaptain = ref(false);
 
-// 加载学生团队信息
-const loadTeam = async () => {
+const newTeam = ref({
+  group_name: '',
+  project_title: '',
+  project_description: '',
+});
+
+const isInviteModalVisible = ref(false);
+const availableStudents = ref([]); // 可邀请的学生列表
+
+// const fetchData = async () => {
+//   loading.value = true;
+//   error.value = null;
+//   try {
+//     const teamResponse = await api.getMyTeam();
+//     myTeam.value = teamResponse.data;
+//     // 如果有团队，活动信息从团队数据中获取
+//     if(myTeam.value) {
+//         activeEvent.value = { event_name: myTeam.value.event_name }; // 简化活动对象
+//         isCaptain.value = myTeam.value.captain.stu_id === api.getCurrentUserId(); // 假设api能获取当前用户ID
+//     }
+//   } catch (err) {
+//     if (err.response && err.response.status === 404) {
+//       myTeam.value = null;
+//       // 如果没团队，需要单独获取当前是否有活动
+//       try {
+//         const eventResponse = await api.getActiveEventForStudent(); // 需要后端提供此接口
+//         activeEvent.value = eventResponse.data;
+//       } catch (eventErr) {
+//         activeEvent.value = null;
+//       }
+//     } else {
+//       error.value = "加载团队信息失败，请刷新页面。";
+//     }
+//   } finally {
+//     loading.value = false;
+//   }
+// };
+const fetchData = async () => {
+  console.log("--- [DEBUG] fetchData started ---");
+  loading.value = true;
+  error.value = null;
+
+  // 1. 尝试获取团队信息
   try {
-    const res = await apiClient.get("student/team/");
-    team.value = res.data;
+    console.log("Step 1: Calling api.getMyTeam()...");
+    const teamResponse = await api.getMyTeam();
+    myTeam.value = teamResponse.data;
+    console.log("Step 1 SUCCESS: Found team data.", myTeam.value);
   } catch (err) {
-    team.value = null;
+    if (err.response && err.response.status === 404) {
+      console.log("Step 1 FAILED with 404: User has no team. This is expected.");
+      myTeam.value = null;
+    } else {
+      console.error("Step 1 FAILED with unexpected error:", err);
+      error.value = "加载团队信息时发生意外错误。";
+    }
   }
+
+  // 2. 尝试获取活动信息
+  try {
+    console.log("Step 2: Calling api.getActiveEventForStudent()...");
+    const eventResponse = await api.getActiveEventForStudent();
+    activeEvent.value = eventResponse.data;
+    console.log("Step 2 SUCCESS: Found active event.", activeEvent.value);
+  } catch (err) {
+    if (err.response && err.response.status === 404) {
+      console.log("Step 2 FAILED with 404: No active event found for this user.");
+      activeEvent.value = null;
+    } else {
+      console.error("Step 2 FAILED with unexpected error:", err);
+      error.value = "加载活动信息时发生意外错误。";
+    }
+  }
+
+  loading.value = false;
+  console.log("--- [DEBUG] fetchData finished ---");
 };
 
-// 创建团队
-const createTeam = async () => {
-  const name = prompt("请输入团队名称：");
-  if (!name) return;
+onMounted(fetchData);
 
-  try {
-    const res = await apiClient.post("student/team/create/", { name });
-    alert("团队创建成功！");
-    team.value = res.data;
-  } catch (err) {
-    alert(err.response?.data?.error || "创建失败");
-  }
-};
-
-// 加入团队
-const joinTeam = async () => {
-  if (!joinCode.value) {
-    alert("请输入邀请码");
+const handleCreateTeam = async () => {
+  if (!newTeam.value.group_name || !newTeam.value.project_title) {
+    alert("团队名称和项目标题不能为空！");
     return;
   }
   try {
-    const res = await apiClient.post("student/team/join/", { code: joinCode.value });
-    alert("加入成功！");
-    team.value = res.data;
+    await api.createTeam(newTeam.value); // 后端createTeam现在应该处理这些新字段
+    alert('团队创建成功！');
+    fetchData(); // 重新加载页面数据
   } catch (err) {
-    alert(err.response?.data?.error || "加入失败");
+    alert(`创建失败: ${err.response?.data?.error || '未知错误'}`);
   }
 };
 
-// 退出团队
-const leaveTeam = async () => {
-  if (!confirm("确定要退出该团队吗？")) return;
-
-  try {
-    await apiClient.post("student/team/leave/");
-    alert("已退出团队");
-    team.value = null;
-  } catch (err) {
-    alert(err.response?.data?.error || "退出失败");
-  }
+const openInviteModal = async () => {
+    try {
+        // 后端需要一个接口来获取同活动下、未组队的学生
+        const response = await api.getAvailableStudentsForTeam();
+        availableStudents.value = response.data;
+        isInviteModalVisible.value = true;
+    } catch(err) {
+        alert("获取可邀请学生列表失败。");
+    }
 };
 
-onMounted(loadTeam);
+// 其他方法如 openEditProjectModal, handleLeaveTeam 等保持不变或根据新逻辑实现
+const handleLeaveTeam = () => { alert("退出/解散功能待实现"); };
+const openEditProjectModal = () => { alert("编辑项目功能待实现"); };
+const openEditAdvisorsModal = () => { alert("选择志愿导师功能待实现"); };
+const fetchJoinableTeams = () => { alert("查找团队功能待实现"); };
+const inviteStudent = (student) => { alert(`邀请 ${student.stu_name} 的功能待实现`); };
+const removeMember = (member) => { alert(`移除 ${member.stu_name} 的功能待实现`); };
 </script>
 
 <style scoped>
-.team-page {
-  background: #fff;
-  border-radius: 10px;
-  padding: 30px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-}
-
-.team-info {
-  border: 1px solid #ddd;
-  border-radius: 10px;
-  padding: 20px;
-}
-
-.create-join-section {
-  text-align: center;
-  margin-top: 40px;
-}
-
-.join-team {
-  margin-top: 20px;
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-}
-
-input {
-  padding: 8px 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  width: 200px;
-}
-
-.btn {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.btn-primary {
-  background-color: #3498db;
-  color: white;
-}
-
-.btn-success {
-  background-color: #2ecc71;
-  color: white;
-}
-
-.btn-danger {
-  background-color: #e74c3c;
-  color: white;
-}
+/* 样式与之前类似，但为新布局调整 */
+.page-container { padding: 20px; max-width: 1200px; margin: auto; }
+.team-container { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+.team-info-card, .team-members-card, .action-card, .no-event-card { background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+h2, h3 { margin-top: 0; }
+.event-name { font-style: italic; color: #666; }
+.project-section, .advisor-section, .final-advisor-section { margin-top: 25px; }
+.final-advisor { font-weight: bold; color: #007bff; font-size: 1.1em; }
+.captain-badge { background-color: #ffc107; color: #333; padding: 2px 6px; border-radius: 4px; font-size: 0.75em; font-weight: bold; margin-left: 8px; }
+.btn-edit-small, .btn-primary-small, .btn-remove-small { padding: 4px 8px; font-size: 0.8em; margin-left: 10px; cursor: pointer; border-radius: 4px; border: 1px solid transparent; }
+.btn-edit-small { border-color: #6c757d; color: #6c757d; background: none; }
+.btn-primary-small { background-color: #007bff; color: white; border: none; }
+.btn-remove-small { background-color: #ff4d4f; color: white; border: none; }
+.no-team-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.form-group { margin-bottom: 15px; }
+.form-group label { display: block; margin-bottom: 5px; }
+.form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1em; }
+textarea { min-height: 100px; resize: vertical; }
 </style>

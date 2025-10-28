@@ -4,37 +4,20 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="5a3f43bc-5135-4223-8a01-96f06d2dbf59" name="更改" comment="第一版">
-      <change afterPath="$PROJECT_DIR$/classwork/teacherapp/models.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/classwork/teacherapp/serializers.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/classwork/teacherapp/urls.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/classwork/teacherapp/views.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wcfrontend/src/layouts/StudentDashboard.vue" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wcfrontend/src/pages/AutoAssignment.vue" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wcfrontend/src/pages/StudentProfile.vue" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wcfrontend/src/pages/StudentTeam.vue" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wcfrontend/src/pages/TeacherManagement.vue" afterDir="false" />
+    <list default="true" id="5a3f43bc-5135-4223-8a01-96f06d2dbf59" name="更改" comment="第一二版">
+      <change afterPath="$PROJECT_DIR$/classwork/teamapp/serializers.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/classwork/teamapp/urls.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/adminapp/authentication.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/adminapp/authentication.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/adminapp/migrations/0001_initial.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/adminapp/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/adminapp/models.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/classwork/adminapp/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/adminapp/serializers.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/adminapp/urls.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/adminapp/urls.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/classwork/adminapp/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/adminapp/views.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/classwork/authentication.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/classwork/authentication.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/classwork/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/classwork/settings.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/classwork/classwork/urls.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/classwork/urls.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/db.sqlite3" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/studentapp/migrations/0001_initial.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/studentapp/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/studentapp/models.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/classwork/studentapp/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/studentapp/serializers.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/studentapp/urls.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/studentapp/urls.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/studentapp/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/studentapp/views.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wcfrontend/src/components/login.vue" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/components/login.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wcfrontend/src/layouts/DashboardLayout.vue" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/layouts/DashboardLayout.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wcfrontend/src/pages/StudentDashboard.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/classwork/teacherapp/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/teacherapp/serializers.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/classwork/teamapp/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/teamapp/models.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/classwork/teamapp/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/teamapp/views.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wcfrontend/src/layouts/StudentDashboard.vue" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/layouts/StudentDashboard.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/wcfrontend/src/pages/StudentManagement.vue" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/pages/StudentManagement.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wcfrontend/src/pages/Welcome.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wcfrontend/src/pages/StudentTeam.vue" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/pages/StudentTeam.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/wcfrontend/src/plugins/axios.js" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/plugins/axios.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/wcfrontend/src/router/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/router/index.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/wcfrontend/src/services/api.js" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/services/api.js" afterDir="false" />
@@ -61,8 +44,8 @@
     <option name="RECENT_TEMPLATES">
       <list>
         <option value="JavaScript File" />
-        <option value="Python Script" />
         <option value="Vue Composition API Component" />
+        <option value="Python Script" />
       </list>
     </option>
   </component>
@@ -197,7 +180,9 @@
       <workItem from="1761116184945" duration="7152000" />
       <workItem from="1761496856496" duration="14274000" />
       <workItem from="1761512367548" duration="22547000" />
-      <workItem from="1761536343809" duration="4049000" />
+      <workItem from="1761536343809" duration="4936000" />
+      <workItem from="1761563476381" duration="15462000" />
+      <workItem from="1761583576962" duration="1417000" />
     </task>
     <task id="LOCAL-00001" summary="第一版">
       <option name="closed" value="true" />
@@ -207,7 +192,23 @@
       <option name="project" value="LOCAL" />
       <updated>1760928231188</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="第一二版">
+      <option name="closed" value="true" />
+      <created>1761562412416</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1761562412416</updated>
+    </task>
+    <task id="LOCAL-00003" summary="第一二版">
+      <option name="closed" value="true" />
+      <created>1761562489936</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1761562489936</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -226,7 +227,8 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="第一版" />
-    <option name="LAST_COMMIT_MESSAGE" value="第一版" />
+    <MESSAGE value="第一二版" />
+    <option name="LAST_COMMIT_MESSAGE" value="第一二版" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -238,14 +240,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/wcfrontend/src/pages/StudentManagement.vue</url>
-          <line>78</line>
-          <properties lambdaOrdinal="-1" />
-          <option name="timeStamp" value="2" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="javascript">
-          <url>file://$PROJECT_DIR$/wcfrontend/src/pages/StudentManagement.vue</url>
-          <line>334</line>
-          <properties lambdaOrdinal="-1" />
+          <line>261</line>
           <option name="timeStamp" value="3" />
         </line-breakpoint>
       </breakpoints>
