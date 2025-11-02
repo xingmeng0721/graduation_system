@@ -114,32 +114,32 @@ WSGI_APPLICATION = "classwork.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-# import pymysql
-# pymysql.install_as_MySQLdb()
-#
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.mysql',
-#         'NAME': 'graduation_system',
-#         'USER': 'gs',
-#         'PASSWORD': '123456',
-#         'HOST': '127.0.0.1',
-#         'PORT': '3306',
-#     }
-# }
+import pymysql
+pymysql.install_as_MySQLdb()
+
 DATABASES = {
     'default': {
-        'ENGINE': 'mssql',
-        'NAME': 'DB_2',
-        'USER': 'srz',
-        'PASSWORD': 'db_zsr',
-        'HOST': 'bzmtxh.top',
-        'PORT': '24133',
-        'OPTIONS': {
-            'driver': 'ODBC Driver 17 for SQL Server',
-        },
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'graduation_system',
+        'USER': 'gs',
+        'PASSWORD': '123456',
+        'HOST': '127.0.0.1',
+        'PORT': '3306',
     }
 }
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'mssql',
+#         'NAME': 'DB_2',
+#         'USER': 'srz',
+#         'PASSWORD': 'db_zsr',
+#         'HOST': 'bzmtxh.top',
+#         'PORT': '24133',
+#         'OPTIONS': {
+#             'driver': 'ODBC Driver 17 for SQL Server',
+#         },
+#     }
+# }
 
 
 # Password validation

@@ -84,7 +84,6 @@ class Group(models.Model):
         """
         super().clean()
         # 验证1: 队长必须是团队成员之一
-        # 注意：在创建新团队时，因为成员关系尚未建立，此验证可能需要在保存后进行
         # 这里我们假设在调用 clean 时，成员关系已经暂存
         if self.captain and self.pk and not self.members.filter(pk=self.captain.pk).exists():
             raise ValidationError(f"队长 {self.captain.stu_name} 必须是团队的成员。")

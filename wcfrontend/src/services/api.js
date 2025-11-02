@@ -127,23 +127,21 @@ export default {
   return apiClient.put(`${STUDENT_BASE}profile/`, studentData);
   },
   getActiveEventForStudent() {
-    // 这个函数会调用我们之前在后端创建的 /api/teams/active-event/ 接口
     return apiClient.get(`${TEAM_BASE}active-event/`);
   },
    getMyTeam() {
-    // 删除了多余的 'teams/'
     return apiClient.get(`${TEAM_BASE}my-team/`);
   },
   createTeam(data) {
-    // 删除了多余的 'teams/'
     return apiClient.post(`${TEAM_BASE}create-team/`, data);
   },
   joinTeam(groupId) {
-    // 删除了多余的 'teams/'
     return apiClient.post(`${TEAM_BASE}${groupId}/join/`);
   },
+  getAllTeams() {
+  return apiClient.get(`${TEAM_BASE}all-teams/`);
+  },
   leaveTeam() {
-    // 删除了多余的 'teams/'
     return apiClient.post(`${TEAM_BASE}leave-team/`);
   },
   getJoinableTeams() {

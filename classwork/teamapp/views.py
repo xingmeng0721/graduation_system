@@ -4,7 +4,6 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-
 from adminapp.models import MutualSelectionEvent
 from studentapp.models import Student
 from teacherapp.models import teacher
@@ -27,7 +26,6 @@ class TeamViewSet(viewsets.GenericViewSet):
     def get_queryset(self):
         return Group.objects.all()
 
-    # ========== 工具函数 ==========
     def get_active_event(self, student: Student):
         """
         获取当前学生参与且正在进行的互选活动
@@ -39,7 +37,6 @@ class TeamViewSet(viewsets.GenericViewSet):
             end_time__gte=now
         ).first()
 
-    # ========== 视图方法 ==========
     @action(detail=False, methods=['get'], url_path='active-event')
     def get_active_event_for_student(self, request):
         """获取当前学生参与的、正在进行的互选活动"""
@@ -88,9 +85,7 @@ class TeamViewSet(viewsets.GenericViewSet):
             event=active_event,
             captain=student
         )
-        # 队长自动加入团队
         GroupMembership.objects.create(student=student, group=group)
-
         return Response(self.get_serializer(group).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'], url_path='join')
@@ -100,7 +95,6 @@ class TeamViewSet(viewsets.GenericViewSet):
         student = request.user
         if hasattr(student, 'membership'):
             return Response({'error': '您已在一个团队中，请先退出'}, status=status.HTTP_400_BAD_REQUEST)
-
         try:
             group = self.get_object()
         except Group.DoesNotExist:
@@ -113,7 +107,6 @@ class TeamViewSet(viewsets.GenericViewSet):
         if group.event_id != active_event.event_id:
             return Response({'error': '您不能加入不属于当前活动的团队'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 验证该学生是否属于该活动的学生列表
         if not active_event.students.filter(pk=student.pk).exists():
             return Response({'error': '您未参与该活动，无法加入团队'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -137,6 +130,26 @@ class TeamViewSet(viewsets.GenericViewSet):
                 return Response({'message': '您已成功退出团队'}, status=status.HTTP_200_OK)
         except GroupMembership.DoesNotExist:
             return Response({'error': '您当前不属于任何团队'}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['get'], url_path='all-teams')
+    def all_teams(self, request):
+        """
+        返回当前活动下的所有团队信息
+        """
+        student = request.user
+        if not isinstance(student, Student):
+            return Response({'error': '当前账号不是学生账号'}, status=status.HTTP_400_BAD_REQUEST)
+
+        active_event = self.get_active_event(student)
+        if not active_event:
+            return Response({'error': '您当前没有正在进行的互选活动'}, status=status.HTTP_400_BAD_REQUEST)
+
+        queryset = Group.objects.filter(event=active_event).select_related(
+            'captain', 'advisor', 'preferred_advisor_1', 'preferred_advisor_2', 'preferred_advisor_3'
+        ).prefetch_related('members')
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
     @action(detail=False, methods=['get'], url_path='available-teachers')
     def available_teachers(self, request):

@@ -4,7 +4,15 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="5a3f43bc-5135-4223-8a01-96f06d2dbf59" name="更改" comment="第一二版" />
+    <list default="true" id="5a3f43bc-5135-4223-8a01-96f06d2dbf59" name="更改" comment="第一二版">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/classwork/adminapp/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/adminapp/models.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/classwork/classwork/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/classwork/settings.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/classwork/teamapp/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/teamapp/models.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/classwork/teamapp/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/teamapp/views.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wcfrontend/src/pages/StudentTeam.vue" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/pages/StudentTeam.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wcfrontend/src/services/api.js" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/services/api.js" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -63,31 +71,32 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Django 服务器.未命名.executor&quot;: &quot;Run&quot;,
-    &quot;Python.test.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.OpenDjangoStructureViewOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
-    &quot;last_opened_file_path&quot;: &quot;D:/DjangoProject/django/wcfrontend/src/pages&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;npm.dev.executor&quot;: &quot;Run&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;com.intellij.python.django.customization.DjangoModulesConfigurable&quot;,
-    &quot;ts.external.directory.path&quot;: &quot;D:\\PyCharm 2024.3\\plugins\\javascript-plugin\\jsLanguageServicesImpl\\external&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Django 服务器.未命名.executor": "Run",
+    "Python.test.executor": "Run",
+    "RunOnceActivity.OpenDjangoStructureViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "master",
+    "ignore.virus.scanning.warn.message": "true",
+    "last_opened_file_path": "D:/DjangoProject/django/wcfrontend/src/pages",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "npm.dev.executor": "Run",
+    "settings.editor.selected.configurable": "com.intellij.python.django.customization.DjangoModulesConfigurable",
+    "ts.external.directory.path": "D:\\PyCharm 2024.3\\plugins\\javascript-plugin\\jsLanguageServicesImpl\\external",
+    "vue.rearranger.settings.migration": "true"
   },
-  &quot;keyToStringList&quot;: {
-    &quot;vue.recent.templates&quot;: [
-      &quot;Vue Composition API Component&quot;
+  "keyToStringList": {
+    "vue.recent.templates": [
+      "Vue Composition API Component"
     ]
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="D:\DjangoProject\django\wcfrontend\src\pages" />
@@ -96,7 +105,7 @@
       <recent name="D:\DjangoProject\django\classwork\studentapp" />
     </key>
   </component>
-  <component name="RunManager" selected="Django 服务器.未命名">
+  <component name="RunManager" selected="npm.dev">
     <configuration name="未命名" type="Python.DjangoServer" factoryName="Django server" nameIsGenerated="true">
       <module name="django" />
       <option name="ENV_FILES" value="" />
@@ -165,7 +174,10 @@
       <workItem from="1761512367548" duration="22547000" />
       <workItem from="1761536343809" duration="4936000" />
       <workItem from="1761563476381" duration="15462000" />
-      <workItem from="1761583576962" duration="2647000" />
+      <workItem from="1761583576962" duration="2911000" />
+      <workItem from="1761645458921" duration="88000" />
+      <workItem from="1761720754854" duration="6363000" />
+      <workItem from="1762089798003" duration="1568000" />
     </task>
     <task id="LOCAL-00001" summary="第一版">
       <option name="closed" value="true" />
@@ -199,7 +211,15 @@
       <option name="project" value="LOCAL" />
       <updated>1761645177281</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="第一二版">
+      <option name="closed" value="true" />
+      <created>1761645342491</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1761645342491</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -228,6 +248,10 @@
           <url>file://$PROJECT_DIR$/classwork/adminapp/urls.py</url>
           <line>6</line>
           <option name="timeStamp" value="1" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/classwork/teamapp/models.py</url>
+          <option name="timeStamp" value="4" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/wcfrontend/src/pages/StudentManagement.vue</url>

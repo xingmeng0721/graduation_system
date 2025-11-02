@@ -97,6 +97,22 @@
       </div>
     </div>
   </div>
+  <div v-if="isAllTeamsModalVisible" class="modal-overlay" @click.self="isAllTeamsModalVisible = false">
+  <div class="modal-content">
+    <h2>当前活动的所有团队</h2>
+
+    <div v-if="allTeams.length === 0">暂无团队信息</div>
+    <ul v-else>
+      <li v-for="team in allTeams" :key="team.group_id" class="joinable-team-item">
+        <h4>{{ team.group_name }}</h4>
+        <p>项目：{{ team.project_title || '未填写' }}</p>
+        <p>队长：{{ team.captain?.stu_name }}</p>
+        <p>成员数：{{ team.members.length }}/{{ team.max_members }}</p>
+        <button @click="joinTeam(team)">申请加入</button>
+      </li>
+    </ul>
+  </div>
+</div>
 </template>
 
 <script setup>
@@ -117,35 +133,10 @@ const newTeam = ref({
 
 const isInviteModalVisible = ref(false);
 const availableStudents = ref([]); // 可邀请的学生列表
+const isAllTeamsModalVisible = ref(false);
+const allTeams = ref([]);
 
-// const fetchData = async () => {
-//   loading.value = true;
-//   error.value = null;
-//   try {
-//     const teamResponse = await api.getMyTeam();
-//     myTeam.value = teamResponse.data;
-//     // 如果有团队，活动信息从团队数据中获取
-//     if(myTeam.value) {
-//         activeEvent.value = { event_name: myTeam.value.event_name }; // 简化活动对象
-//         isCaptain.value = myTeam.value.captain.stu_id === api.getCurrentUserId(); // 假设api能获取当前用户ID
-//     }
-//   } catch (err) {
-//     if (err.response && err.response.status === 404) {
-//       myTeam.value = null;
-//       // 如果没团队，需要单独获取当前是否有活动
-//       try {
-//         const eventResponse = await api.getActiveEventForStudent(); // 需要后端提供此接口
-//         activeEvent.value = eventResponse.data;
-//       } catch (eventErr) {
-//         activeEvent.value = null;
-//       }
-//     } else {
-//       error.value = "加载团队信息失败，请刷新页面。";
-//     }
-//   } finally {
-//     loading.value = false;
-//   }
-// };
+
 const fetchData = async () => {
   console.log("--- [DEBUG] fetchData started ---");
   loading.value = true;
@@ -215,10 +206,42 @@ const openInviteModal = async () => {
 };
 
 // 其他方法如 openEditProjectModal, handleLeaveTeam 等保持不变或根据新逻辑实现
-const handleLeaveTeam = () => { alert("退出/解散功能待实现"); };
+const handleLeaveTeam = async () => {
+  if (isCaptain.value) {
+    if (!confirm('您是队长，解散团队后所有成员都将被移出。确定要解散团队吗？')) return;
+  } else {
+    if (!confirm('确定要退出当前团队吗？')) return;
+  }
+  try {
+    const res = await api.leaveTeam();
+    alert(res.data.message || '操作成功');
+    fetchData(); // 重新加载团队信息
+  } catch (err) {
+    alert(err.response?.data?.error || '操作失败');
+  }
+};
 const openEditProjectModal = () => { alert("编辑项目功能待实现"); };
 const openEditAdvisorsModal = () => { alert("选择志愿导师功能待实现"); };
-const fetchJoinableTeams = () => { alert("查找团队功能待实现"); };
+const fetchJoinableTeams = async () => {
+  try {
+    const response = await api.getAllTeams(); // 调用 /all-teams 接口
+    allTeams.value = response.data;
+    isAllTeamsModalVisible.value = true;
+  } catch (err) {
+    alert(err.response?.data?.error || '加载团队列表失败');
+  }
+};
+const joinTeam = async (team) => {
+  if (!confirm(`确定要申请加入团队「${team.group_name}」吗？`)) return;
+  try {
+    await api.joinTeam(team.group_id);
+    alert('申请加入成功！');
+    isAllTeamsModalVisible.value = false;
+    fetchData();
+  } catch (err) {
+    alert(err.response?.data?.error || '申请失败');
+  }
+};
 const inviteStudent = (student) => { alert(`邀请 ${student.stu_name} 的功能待实现`); };
 const removeMember = (member) => { alert(`移除 ${member.stu_name} 的功能待实现`); };
 </script>
