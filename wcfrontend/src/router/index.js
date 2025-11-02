@@ -69,7 +69,12 @@ const routes = [
     meta: { requiresTeacherAuth: true }, // 需要教师权限
     children: [
       { path: '', redirect: '/teacher/dashboard/profile' }, // 默认子路由，直接显示个人信息
-      { path: 'profile', name: 'TeacherProfile', component: TeacherProfile }
+      { path: 'profile', name: 'TeacherProfile', component: TeacherProfile },
+        {
+        path: 'select-team',
+        name: 'TeacherTeamSelection',
+        component: () => import('../pages/TeacherTeamSelection.vue'), // 使用懒加载
+      }
     ]
   }
 ];

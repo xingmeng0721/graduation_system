@@ -166,4 +166,12 @@ export default {
     addMemberByCaptain(data) {
     return apiClient.post(`${TEAM_BASE}my-team/add-member/`, data);
   },
+    getTeamsForTeacher() {
+    // 新的URL是 /teams/teacher/teams/
+    return apiClient.get(`${TEAM_BASE}teacher/teams/`);
+  },
+    teacherSelectTeam(groupId) {
+    // 新的URL是 /teams/{groupId}/teacher/select/
+    return apiClient.post(`${TEAM_BASE}${groupId}/teacher/select/`);
+  },
 };

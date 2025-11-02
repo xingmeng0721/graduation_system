@@ -115,7 +115,6 @@
               <th>姓名</th>
               <th>年级</th>
               <th>专业</th>
-              <th>分组</th>
               <th>手机号</th>
               <th>邮箱</th>
               <th>操作</th>
@@ -128,7 +127,6 @@
               <td>{{ student.stu_name }}</td>
               <td>{{ student.grade }}</td>
               <td>{{ student.major_name || '无' }}</td>
-              <td>{{ student.group_name || '无' }}</td>
               <td>{{ student.phone || '无' }}</td>
               <td>{{ student.email || '无' }}</td>
               <td>
@@ -137,7 +135,7 @@
               </td>
             </tr>
             <tr v-if="filteredStudents.length === 0">
-              <td :colspan="9" style="text-align: center;">没有找到符合条件的学生。</td>
+              <td :colspan="8" style="text-align: center;">没有找到符合条件的学生。</td>
             </tr>
           </tbody>
         </table>

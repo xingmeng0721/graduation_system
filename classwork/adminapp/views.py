@@ -19,9 +19,11 @@ import pandas as pd
 import io
 from django.http import HttpResponse
 from django.db import transaction
+
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from studentapp.models import Student, Major
-from teamapp.models import Group
+from teamapp.models import Group, GroupMembership
+
 
 
 class RegisterView(generics.CreateAPIView):
@@ -493,18 +495,11 @@ class MajorListView(generics.ListAPIView):
     serializer_class = MajorSerializer
 
 
-
-
 class MutualSelectionEventViewSet(viewsets.ModelViewSet):
     """
-    互选活动管理视图集。
-    支持:
-    - 搜索: 根据活动名称 (`event_name`) 搜索。
-    - 筛选: 根据时间范围进行筛选。
-    - 完整 CRUD 操作。
-    - 批量删除。
+    [强化版] 互选活动管理视图集。
+    通过重写 update 和 destroy 方法，确保数据操作的安全性。
     """
-    # 预取相关对象以优化查询性能
     queryset = MutualSelectionEvent.objects.prefetch_related(
         'teachers', 'students__major'
     ).annotate(
@@ -512,47 +507,118 @@ class MutualSelectionEventViewSet(viewsets.ModelViewSet):
         student_count=Count('students', distinct=True)
     ).all().order_by('-stu_start_time')
 
-    # 配置搜索和筛选
     filter_backends = [filters.SearchFilter, DjangoFilterBackend]
     search_fields = ['event_name']
     filterset_fields = {
-        'stu_start_time': ['gte', 'lte'],
-        'stu_end_time': ['gte', 'lte'],
-        'tea_start_time': ['gte', 'lte'],
-        'tea_end_time': ['gte', 'lte'],
+        'stu_start_time': ['gte', 'lte'], 'stu_end_time': ['gte', 'lte'],
+        'tea_start_time': ['gte', 'lte'], 'tea_end_time': ['gte', 'lte'],
     }
 
     def get_serializer_class(self):
-        """
-        根据不同的操作返回不同的序列化器。
-        - 列表/详情视图使用只读、信息丰富的序列化器。
-        - 创建/更新视图使用可写的序列化器。
-        """
         if self.action in ['list', 'retrieve']:
             return MutualSelectionEventListSerializer
         return MutualSelectionEventSerializer
 
-    @action(detail=False, methods=['post'], url_path='bulk-delete')
-    def bulk_delete(self, request, *args, **kwargs):
+    @transaction.atomic
+    def update(self, request, *args, **kwargs):
         """
-        根据提供的活动ID列表，批量删除互选活动。
-        请求体格式: { "ids": [1, 2, 3] }
+        [核心修复] 重写 update 方法，安全地处理参与者列表的变更。
         """
-        event_ids = request.data.get('ids')
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
 
-        if not isinstance(event_ids, list) or not event_ids:
-            return Response(
-                {'error': '请求体中必须包含一个非空的 "ids" 列表。'},
-                status=status.HTTP_400_BAD_REQUEST
+        # 1. 获取更新前的学生和教师ID集合
+        original_student_ids = set(instance.students.values_list('pk', flat=True))
+        original_teacher_ids = set(instance.teachers.values_list('pk', flat=True))
+
+        # 2. 调用序列化器进行常规验证和更新
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        instance.refresh_from_db()
+
+        # 3. 获取更新后的学生和教师ID集合
+        current_student_ids = set(instance.students.values_list('pk', flat=True))
+        current_teacher_ids = set(instance.teachers.values_list('pk', flat=True))
+
+        # 4. 计算并处理被移除的学生
+        removed_student_ids = original_student_ids - current_student_ids
+        if removed_student_ids:
+            # 找到这些学生在此活动中的所有团队成员关系
+            memberships_to_delete = GroupMembership.objects.filter(
+                group__event=instance,
+                student_id__in=removed_student_ids
             )
 
+            # 检查这些被移除的学生中是否有人是队长
+            captains_to_reset = Student.objects.filter(
+                pk__in=removed_student_ids,
+                led_group__event=instance
+            )
+
+            # 如果有队长被移除，需要先处理队长身份
+            for student in captains_to_reset:
+                group = student.led_group
+                # 如果团队还有其他成员，将队长置空，让团队处于无队长状态
+                if group.members.count() > 1:
+                    group.captain = None
+                    group.save()
+                else:
+                    # 如果团队只剩队长一人，直接删除该团队
+                    group.delete()
+
+            # 最后，删除这些学生的成员关系记录，让他们彻底“退组”
+            memberships_to_delete.delete()
+
+        # 5. 计算并处理被移除的教师
+        removed_teacher_ids = original_teacher_ids - current_teacher_ids
+        if removed_teacher_ids:
+            # 将所有引用了这些被移除教师的团队志愿和最终导师字段置为 NULL
+            Group.objects.filter(event=instance, preferred_advisor_1_id__in=removed_teacher_ids).update(
+                preferred_advisor_1=None)
+            Group.objects.filter(event=instance, preferred_advisor_2_id__in=removed_teacher_ids).update(
+                preferred_advisor_2=None)
+            Group.objects.filter(event=instance, preferred_advisor_3_id__in=removed_teacher_ids).update(
+                preferred_advisor_3=None)
+            Group.objects.filter(event=instance, advisor_id__in=removed_teacher_ids).update(advisor=None)
+
+        return Response(self.get_serializer(instance).data)
+
+    @transaction.atomic
+    def destroy(self, request, *args, **kwargs):
+        """
+        [核心修复] 重写 destroy 方法，在删除活动前，先删除其下的所有团队。
+        """
+        instance = self.get_object()
+
+        # 找到并删除与此活动相关的所有团队
+        # GroupMembership 会因为级联删除被自动清理
+        Group.objects.filter(event=instance).delete()
+
+        # 现在可以安全地删除活动本身
+        self.perform_destroy(instance)
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=['post'], url_path='bulk-delete')
+    @transaction.atomic
+    def bulk_delete(self, request, *args, **kwargs):
+        """
+        [核心修复] 重写批量删除，确保关联的团队也被一并删除。
+        """
+        event_ids = request.data.get('ids')
+        if not isinstance(event_ids, list) or not event_ids:
+            return Response({'error': '请求体中必须包含一个非空的 "ids" 列表。'}, status=status.HTTP_400_BAD_REQUEST)
+
         queryset = self.get_queryset().filter(event_id__in=event_ids)
+
+        # 在删除活动之前，先删除所有相关联的团队
+        Group.objects.filter(event__in=queryset).delete()
+
         deleted_count, _ = queryset.delete()
 
-        return Response(
-            {'message': f'成功删除 {deleted_count} 个互选活动。'},
-            status=status.HTTP_200_OK
-        )
+        return Response({'message': f'成功删除 {deleted_count} 个互选活动及其所有关联团队。'}, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'], url_path='auto-assign')
     def auto_assign(self, request, *args, **kwargs):

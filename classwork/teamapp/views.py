@@ -1,5 +1,6 @@
 from django.utils import timezone
 from django.db import transaction
+from django.db.models import Case, When, Value, IntegerField
 from rest_framework import status, viewsets, serializers
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -51,6 +52,12 @@ class TeamViewSet(viewsets.GenericViewSet):
             students=student,
             stu_start_time__lte=now,
             stu_end_time__gte=now
+        ).first()
+
+    def get_active_event_for_teacher(self, current_teacher: teacher):
+        now = timezone.now()
+        return MutualSelectionEvent.objects.filter(
+            teachers=current_teacher, tea_start_time__lte=now, tea_end_time__gte=now
         ).first()
 
     # --- 核心API端点 ---
@@ -286,3 +293,73 @@ class TeamViewSet(viewsets.GenericViewSet):
 
         GroupMembership.objects.create(student=student_to_add, group=group)
         return Response({'message': f'已成功将 {student_to_add.stu_name} 加入团队'}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['get'], url_path='teacher/teams')
+    def list_teams_for_teacher(self, request):
+        """
+        [核心] 教师查看可选团队列表，并按志愿排序。
+        """
+        current_teacher = request.user
+        if not isinstance(current_teacher, teacher):
+            return Response({'error': '当前用户不是教师账号'}, status=status.HTTP_403_FORBIDDEN)
+
+        active_event = self.get_active_event_for_teacher(current_teacher)
+        if not active_event:
+            return Response({"teams": [], "active_event": None}, status=status.HTTP_200_OK)
+
+        # 使用 Case/When 创建自定义排序字段
+        queryset = Group.objects.filter(event=active_event).annotate(
+            preference_rank=Case(
+                When(preferred_advisor_1=current_teacher, then=Value(1)),
+                When(preferred_advisor_2=current_teacher, then=Value(2)),
+                When(preferred_advisor_3=current_teacher, then=Value(3)),
+                default=Value(4),
+                output_field=IntegerField(),
+            )
+        ).order_by('preference_rank', 'group_name')
+
+        serializer = GroupDetailSerializer(queryset, many=True)
+
+        data = serializer.data
+        for i, group_obj in enumerate(queryset):
+            data[i]['preference_rank'] = group_obj.preference_rank
+
+        response_data = {
+            "teams": data,
+            "active_event": {
+                "event_id": active_event.event_id,
+                "event_name": active_event.event_name,
+                "end_time": active_event.tea_end_time
+            }
+        }
+        return Response(response_data)
+
+    @action(detail=True, methods=['post'], url_path='teacher/select')
+    @transaction.atomic
+    def select_team_by_teacher(self, request, pk=None):
+        """
+        教师选择一个团队。
+        """
+        current_teacher = request.user
+        if not isinstance(current_teacher, teacher):
+            return Response({'error': '当前用户不是教师账号'}, status=status.HTTP_403_FORBIDDEN)
+
+        active_event = self.get_active_event_for_teacher(current_teacher)
+        if not active_event:
+            return Response({'error': '当前没有正在进行的互选活动'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            group_to_select = Group.objects.get(pk=pk, event=active_event)
+        except Group.DoesNotExist:
+            return Response({'error': '该团队不存在或不属于当前活动'}, status=status.HTTP_404_NOT_FOUND)
+
+        if group_to_select.advisor and group_to_select.advisor != current_teacher:
+            return Response({'error': f'操作失败，该团队已被 {group_to_select.advisor.teacher_name} 老师选择。'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # [移除] 根据你的要求，删除了人数上限检查
+
+        group_to_select.advisor = current_teacher
+        group_to_select.save()
+
+        return Response({'message': f'您已成功选择团队“{group_to_select.group_name}”'}, status=status.HTTP_200_OK)

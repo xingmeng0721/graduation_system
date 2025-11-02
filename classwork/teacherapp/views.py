@@ -48,7 +48,7 @@ class TeacherProfileView(views.APIView):
         return Response(serializer.data)
 
     def put(self, request, *args, **kwargs):
-        """处理学生更新个人信息的请求"""
+
         student_instance = request.user
 
         # 使用 partial=True 允许部分更新，用户不必提交所有字段

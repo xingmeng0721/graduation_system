@@ -33,12 +33,10 @@ class Student(AbstractBaseUser):
     stu_name = models.CharField(max_length=255, verbose_name='姓名')
     grade = models.CharField(max_length=50, verbose_name='年级')
     phone = models.CharField(max_length=20, blank=True, null=True, verbose_name='手机号')
-    # is_gleader = models.BooleanField(default=False, verbose_name='是否为组长')
     email = models.EmailField(max_length=255, blank=True, null=True, verbose_name='电子邮箱')
 
     # 外键关系
     major = models.ForeignKey(Major, on_delete=models.SET_NULL, null=True, blank=True, related_name='students', verbose_name='专业')
-    # group = models.ForeignKey(Group, on_delete=models.SET_NULL, null=True, blank=True, related_name='students', verbose_name='分组')
 
     # Django认证系统需要的字段
     is_staff = models.BooleanField(default=False)

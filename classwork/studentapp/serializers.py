@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Student
+from .models import Student, Major
 
 # 学生登录序列化器
 class StudentLoginSerializer(serializers.Serializer):
@@ -8,8 +8,10 @@ class StudentLoginSerializer(serializers.Serializer):
 
 # 学生个人信息序列化器
 class StudentProfileSerializer(serializers.ModelSerializer):
+    major = serializers.StringRelatedField(read_only=True)
+
     class Meta:
         model = Student
-        # 定义学生查看自己信息时可以看到的字段
-        fields = ['stu_id', 'stu_no', 'stu_name', 'grade', 'phone',  'major', 'email']
-        depth = 1 # depth = 1 会将外键关联的对象完整地序列化出来，而不是只给一个ID
+        # [修复] 明确列出所有字段，并设置只读字段
+        fields = ['stu_id', 'stu_no', 'stu_name', 'grade', 'phone', 'major', 'email']
+        read_only_fields = ['stu_id', 'stu_no', 'stu_name', 'grade', 'major']
