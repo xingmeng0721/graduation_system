@@ -500,7 +500,7 @@ class MutualSelectionEventViewSet(viewsets.ModelViewSet):
     互选活动管理视图集。
     支持:
     - 搜索: 根据活动名称 (`event_name`) 搜索。
-    - 筛选: 根据时间范围进行筛选 (例如: ?start_time_after=...&end_time_before=...)。
+    - 筛选: 根据时间范围进行筛选。
     - 完整 CRUD 操作。
     - 批量删除。
     """
@@ -510,14 +510,16 @@ class MutualSelectionEventViewSet(viewsets.ModelViewSet):
     ).annotate(
         teacher_count=Count('teachers', distinct=True),
         student_count=Count('students', distinct=True)
-    ).all().order_by('-start_time')
+    ).all().order_by('-stu_start_time')
 
     # 配置搜索和筛选
     filter_backends = [filters.SearchFilter, DjangoFilterBackend]
     search_fields = ['event_name']
     filterset_fields = {
-        'start_time': ['gte', 'lte'],  # 例如: ?start_time__gte=YYYY-MM-DD
-        'end_time': ['gte', 'lte'],    # 例如: ?end_time__lte=YYYY-MM-DD
+        'stu_start_time': ['gte', 'lte'],
+        'stu_end_time': ['gte', 'lte'],
+        'tea_start_time': ['gte', 'lte'],
+        'tea_end_time': ['gte', 'lte'],
     }
 
     def get_serializer_class(self):
@@ -559,9 +561,10 @@ class MutualSelectionEventViewSet(viewsets.ModelViewSet):
         """
         event = self.get_object()
 
-        # 简单检查活动是否结束
-        if event.end_time > timezone.now():
-            return Response({'error': '该活动尚未结束，不能进行自动分配。'}, status=400)
+        # 检查学生和教师的互选时间是否都已结束
+        now = timezone.now()
+        if event.stu_end_time > now or event.tea_end_time > now:
+            return Response({'error': '该活动尚未对所有参与者结束，不能进行自动分配。'}, status=400)
 
         # 返回一个模拟的成功响应
         return Response({

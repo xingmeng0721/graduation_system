@@ -1,6 +1,8 @@
+from django.db.models import Q
 from rest_framework import serializers
 from .models import AdminUser, MutualSelectionEvent
 from django.contrib.auth.hashers import make_password
+from django.utils import timezone
 from studentapp.models import Student, Major
 from teacherapp.models import teacher
 from teamapp.models import Group
@@ -12,19 +14,19 @@ class AdminUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = AdminUser
         fields = ['admin_id', 'admin_name', 'admin_username', 'admin_password']
-        # 为了安全，密码字段设置为只写，不会在API响应中返回
         extra_kwargs = {
             'admin_password': {'write_only': True}
         }
 
     # 重写 create 方法，对密码进行哈希加密
     def create(self, validated_data):
-        # 使用 Django 内置的 make_password 来加密
         validated_data['admin_password'] = make_password(validated_data.get('admin_password'))
         return super(AdminUserSerializer, self).create(validated_data)
 
 class LoginSerializer(serializers.Serializer):
-    """登录专用的序列化器，只用于数据校验"""
+    """
+    登录专用的序列化器，只用于数据校验
+    """
     admin_username = serializers.CharField(required=True)
     password = serializers.CharField(required=True)
 
@@ -48,11 +50,9 @@ class TeacherManagementSerializer(serializers.ModelSerializer):
             'teacher_id', 'teacher_no', 'teacher_name', 'password',
             'phone', 'email', 'research_direction', 'introduction'
         ]
-        # 'read_only_fields' is not needed if we define write behavior in extra_kwargs
 
         extra_kwargs = {
             'password': {'write_only': True, 'required': True},
-            # 将非必填字段明确标记出来
             'phone': {'required': False, 'allow_blank': True},
             'email': {'required': False, 'allow_blank': True},
             'research_direction': {'required': False, 'allow_blank': True},
@@ -60,17 +60,14 @@ class TeacherManagementSerializer(serializers.ModelSerializer):
         }
 
     def create(self, validated_data):
-        # 使用我们自定义的 Manager 来创建用户，确保密码被正确哈希
         user = teacher.objects.create_user(**validated_data)
         return user
 
     def update(self, instance, validated_data):
-        # 处理密码更新
         password = validated_data.pop('password', None)
         if password:
             instance.set_password(password)
 
-        # 调用父类的 update 方法来更新其他字段
         return super().update(instance, validated_data)
 
 
@@ -179,7 +176,6 @@ class MutualSelectionEventSerializer(serializers.ModelSerializer):
     """
     用于创建和更新互选活动的序列化器。
     """
-    # 使用只写的字段来接收教师和学生的ID列表
     teachers = serializers.PrimaryKeyRelatedField(
         queryset=teacher.objects.all(),
         many=True,
@@ -195,15 +191,60 @@ class MutualSelectionEventSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = MutualSelectionEvent
-        fields = ['event_id', 'event_name', 'start_time', 'end_time', 'teachers', 'students']
+        fields = ['event_id', 'event_name', 'stu_start_time', 'stu_end_time', 'tea_start_time', 'tea_end_time',
+                  'teachers', 'students']
 
     def validate(self, data):
         """
-        校验开始时间是否早于结束时间。
+        复合校验:
+        1. 校验时间合法性：结束时间必须晚于开始时间。
+        2. 校验唯一性：一个学生或老师在同一时间只能参加一个未结束的活动。
         """
-        if 'start_time' in data and 'end_time' in data:
-            if data['start_time'] >= data['end_time']:
-                raise serializers.ValidationError("结束时间必须晚于开始时间。")
+        # --- 1. 时间合法性校验 ---
+        if 'stu_start_time' in data and 'stu_end_time' in data and data['stu_start_time'] >= data['stu_end_time']:
+            raise serializers.ValidationError("学生截止时间必须晚于学生开始时间。")
+        if 'tea_start_time' in data and 'tea_end_time' in data and data['tea_start_time'] >= data['tea_end_time']:
+            raise serializers.ValidationError("教师截止时间必须晚于教师开始时间。")
+
+        # --- 2. 参与者唯一性校验 ---
+        now = timezone.now()
+
+        # 确定要检查的学生和教师列表
+        students_to_check = data.get('students', [])
+        teachers_to_check = data.get('teachers', [])
+
+        # 构建查询，查找所有尚未完全结束的活动
+        # 一个活动只要学生或老师的结束时间晚于现在，就视为“活跃”
+        active_events_query = MutualSelectionEvent.objects.filter(
+            Q(stu_end_time__gt=now) | Q(tea_end_time__gt=now)
+        )
+
+        # 如果是更新操作，需要排除当前正在编辑的活动实例
+        if self.instance:
+            active_events_query = active_events_query.exclude(pk=self.instance.pk)
+
+        # 检查学生
+        if students_to_check:
+            conflicting_students = active_events_query.filter(
+                students__in=students_to_check
+            ).values_list('students__stu_name', flat=True).distinct()
+
+            if conflicting_students:
+                raise serializers.ValidationError(
+                    f"以下学生已参加了其他未结束的活动，不能重复添加: {', '.join(conflicting_students)}"
+                )
+
+        # 检查教师
+        if teachers_to_check:
+            conflicting_teachers = active_events_query.filter(
+                teachers__in=teachers_to_check
+            ).values_list('teachers__teacher_name', flat=True).distinct()
+
+            if conflicting_teachers:
+                raise serializers.ValidationError(
+                    f"以下教师已参加了其他未结束的活动，不能重复添加: {', '.join(conflicting_teachers)}"
+                )
+
         return data
 
 
@@ -211,16 +252,35 @@ class MutualSelectionEventListSerializer(serializers.ModelSerializer):
     """
     用于展示互选活动列表和详情的序列化器。
     """
-    # 使用嵌套序列化器来显示教师和学生的详细信息
     teachers = TeacherProfileSerializer(many=True, read_only=True)
     students = SimpleStudentSerializer(many=True, read_only=True)
     teacher_count = serializers.IntegerField(read_only=True)
     student_count = serializers.IntegerField(read_only=True)
-
+    # 新增：活动状态字段
+    status = serializers.SerializerMethodField()
 
     class Meta:
         model = MutualSelectionEvent
         fields = [
-            'event_id', 'event_name', 'start_time', 'end_time',
+            'event_id', 'event_name', 'stu_start_time', 'stu_end_time',
+            'tea_start_time', 'tea_end_time', 'status',  # 添加 status 字段
             'teacher_count', 'student_count', 'teachers', 'students'
         ]
+
+    def get_status(self, obj: MutualSelectionEvent) -> str:
+        """
+        根据当前时间判断活动状态。
+        - 未开始: 学生和老师的开始时间都晚于现在。
+        - 已结束: 学生和老师的结束时间都早于现在。
+        - 进行中: 其他所有情况。
+        """
+        now = timezone.now()
+        # 如果最早的开始时间还没到，则活动“未开始”
+        if obj.stu_start_time > now and obj.tea_start_time > now:
+            return "未开始"
+        # 如果最晚的结束时间已过，则活动“已结束”
+        elif obj.stu_end_time < now and obj.tea_end_time < now:
+            return "已结束"
+        # 其他情况均为“进行中”
+        else:
+            return "进行中"

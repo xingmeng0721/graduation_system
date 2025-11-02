@@ -58,7 +58,7 @@ class Group(models.Model):
         on_delete=models.SET_NULL,
         related_name='led_group',
         verbose_name='队长',
-        null=True,
+        null=True, # 允许为空，方便后续的转让队长或队长退出逻辑
         blank=True
     )
 
@@ -71,7 +71,7 @@ class Group(models.Model):
     )
 
     class Meta:
-        db_table = 'team'  # 建议使用更清晰的表名
+        db_table = 'team'
         verbose_name = '团队/分组'
         verbose_name_plural = verbose_name
         # 确保在同一个互选活动中，团队名称是唯一的
@@ -81,22 +81,21 @@ class Group(models.Model):
         """
         模型的自定义验证逻辑。
         在保存或创建时，Django admin 和 ModelForm 会自动调用此方法。
+        注意：DRF Serializer 不会自动调用此方法，相关逻辑应在Serializer中实现。
         """
         super().clean()
-        # 验证1: 队长必须是团队成员之一
-        # 这里我们假设在调用 clean 时，成员关系已经暂存
         if self.captain and self.pk and not self.members.filter(pk=self.captain.pk).exists():
             raise ValidationError(f"队长 {self.captain.stu_name} 必须是团队的成员。")
 
-        # 验证2: 指导老师和所有成员必须属于同一个互选活动（如果活动存在）
         if self.event:
             if self.advisor and not self.event.teachers.filter(pk=self.advisor.pk).exists():
                 raise ValidationError(f"指导老师 {self.advisor.teacher_name} 未参与此互选活动。")
 
             # 检查所有成员是否都参与了该活动
-            for member in self.members.all():
-                if not self.event.students.filter(pk=member.pk).exists():
-                    raise ValidationError(f"成员 {member.stu_name} 未参与此互选活动。")
+            # 这个检查更适合在添加成员时进行，而不是在保存团队时
+            # for member in self.members.all():
+            #     if not self.event.students.filter(pk=member.pk).exists():
+            #         raise ValidationError(f"成员 {member.stu_name} 未参与此互选活动。")
 
     def __str__(self):
         return self.group_name
@@ -107,17 +106,16 @@ class GroupMembership(models.Model):
     团队成员关系模型 (中间表)
     这个模型是核心，它保证了一个学生只能加入一个团队。
     """
-    # 将学生设置为主键，利用数据库约束天然保证一个学生只能有一条成员记录，即只能加入一个组
     student = models.OneToOneField(
         'studentapp.Student',
         on_delete=models.CASCADE,
         primary_key=True,
-        related_name='membership'  # 方便通过 student.membership 访问此关系
+        related_name='membership'
     )
     group = models.ForeignKey(
         Group,
         on_delete=models.CASCADE,
-        related_name='memberships'  # 方便通过 group.memberships 访问所有关系记录
+        related_name='memberships'
     )
     date_joined = models.DateTimeField(auto_now_add=True, verbose_name='加入时间')
 

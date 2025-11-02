@@ -113,11 +113,9 @@ export default {
     return apiClient.post(`${STUDENT_BASE}login/`, credentials);
   },
   sendStudentResetCode(data) {
-    // data 包含 stu_name 和 email
     return apiClient.post(`${STUDENT_BASE}send-reset-code/`, data);
   },
   resetStudentPasswordByCode(data) {
-    // data 包含 stu_name, email, code, password
     return apiClient.post(`${STUDENT_BASE}reset-code/`, data);
   },
   getStudentProfile() {
@@ -125,28 +123,6 @@ export default {
   },
   updateStudentProfile(studentData) {
   return apiClient.put(`${STUDENT_BASE}profile/`, studentData);
-  },
-  getActiveEventForStudent() {
-    return apiClient.get(`${TEAM_BASE}active-event/`);
-  },
-   getMyTeam() {
-    return apiClient.get(`${TEAM_BASE}my-team/`);
-  },
-  createTeam(data) {
-    return apiClient.post(`${TEAM_BASE}create-team/`, data);
-  },
-  joinTeam(groupId) {
-    return apiClient.post(`${TEAM_BASE}${groupId}/join/`);
-  },
-  getAllTeams() {
-  return apiClient.get(`${TEAM_BASE}all-teams/`);
-  },
-  leaveTeam() {
-    return apiClient.post(`${TEAM_BASE}leave-team/`);
-  },
-  getJoinableTeams() {
-    // 删除了多余的 'teams/'
-    return apiClient.get(`${TEAM_BASE}joinable/`);
   },
   teacherLogin(credentials) {
     return apiClient.post(`${TEACHER_BASE}login/`, credentials);
@@ -156,5 +132,38 @@ export default {
   },
   updateTeacherProfile(teacherData) {
   return apiClient.put(`${TEACHER_BASE}profile/`, teacherData);
+  },
+  getDashboard() {
+    return apiClient.get(`${TEAM_BASE}dashboard/`);
+  },
+  createTeam(data) {
+    return apiClient.post(`${TEAM_BASE}create-team/`, data);
+  },
+  updateMyTeam(data) {
+    return apiClient.put(`${TEAM_BASE}my-team/update/`, data);
+  },
+  removeMember(memberId) {
+    return apiClient.post(`${TEAM_BASE}my-team/remove-member/`, { student_id: memberId });
+  },
+  disbandTeam() {
+    return apiClient.post(`${TEAM_BASE}my-team/disband/`);
+  },
+  leaveTeam() {
+    return apiClient.post(`${TEAM_BASE}leave-team/`);
+  },
+  joinTeam(groupId) {
+    return apiClient.post(`${TEAM_BASE}${groupId}/join/`);
+  },
+  getAllTeamsInActiveEvent() {
+    return apiClient.get(`${TEAM_BASE}all-teams/`);
+  },
+  getAvailableTeammates() {
+    return apiClient.get(`${TEAM_BASE}available-teammates/`);
+  },
+  getAvailableAdvisors() {
+    return apiClient.get(`${TEAM_BASE}available-teachers/`);
+  },
+    addMemberByCaptain(data) {
+    return apiClient.post(`${TEAM_BASE}my-team/add-member/`, data);
   },
 };
