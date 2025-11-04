@@ -19,7 +19,6 @@ class TeacherLoginSerializer(serializers.Serializer):
 
 
 class TeacherProfileSerializer(serializers.ModelSerializer):
-    # [新增] 用于密码验证的三个只写字段
     old_password = serializers.CharField(write_only=True, required=False, allow_blank=True)
     new_password = serializers.CharField(write_only=True, required=False, allow_blank=True, style={'input_type': 'password'})
     confirm_password = serializers.CharField(write_only=True, required=False, allow_blank=True, style={'input_type': 'password'})
@@ -29,7 +28,6 @@ class TeacherProfileSerializer(serializers.ModelSerializer):
         fields = (
             'teacher_id', 'teacher_no', 'teacher_name',
             'phone', 'email', 'research_direction', 'introduction',
-            # 将新字段加入
             'old_password', 'new_password', 'confirm_password'
         )
         read_only_fields = ('teacher_id', 'teacher_no', 'teacher_name')

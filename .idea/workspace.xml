@@ -4,23 +4,14 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="5a3f43bc-5135-4223-8a01-96f06d2dbf59" name="更改" comment="6">
-      <change afterPath="$PROJECT_DIR$/wcfrontend/src/pages/TeacherTeamSelection.vue" afterDir="false" />
+    <list default="true" id="5a3f43bc-5135-4223-8a01-96f06d2dbf59" name="更改" comment="2">
+      <change afterPath="$PROJECT_DIR$/wcfrontend/src/components/AdvancedMultiSelect.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/adminapp/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/adminapp/views.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/studentapp/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/studentapp/models.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/classwork/studentapp/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/studentapp/serializers.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/classwork/studentapp/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/studentapp/views.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/classwork/teacherapp/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/teacherapp/serializers.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/teacherapp/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/teacherapp/views.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/teamapp/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/teamapp/views.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wcfrontend/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wcfrontend/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wcfrontend/src/layouts/TeacherDashboard.vue" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/layouts/TeacherDashboard.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wcfrontend/src/pages/StudentManagement.vue" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/pages/StudentManagement.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wcfrontend/src/pages/MutualSelectionManagement.vue" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/pages/MutualSelectionManagement.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/wcfrontend/src/pages/StudentProfile.vue" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/pages/StudentProfile.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wcfrontend/src/pages/TeacherProfile.vue" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/pages/TeacherProfile.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wcfrontend/src/router/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/router/index.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wcfrontend/src/services/api.js" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/services/api.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -85,32 +76,32 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "Django 服务器.未命名.executor": "Run",
-    "Python.test.executor": "Run",
-    "RunOnceActivity.OpenDjangoStructureViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "1",
-    "ignore.virus.scanning.warn.message": "true",
-    "last_opened_file_path": "D:/DjangoProject/django/wcfrontend/src/pages",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "npm.dev.executor": "Run",
-    "settings.editor.selected.configurable": "com.intellij.python.django.customization.DjangoModulesConfigurable",
-    "ts.external.directory.path": "D:\\PyCharm 2024.3\\plugins\\javascript-plugin\\jsLanguageServicesImpl\\external",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Django 服务器.未命名.executor&quot;: &quot;Run&quot;,
+    &quot;Python.test.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.OpenDjangoStructureViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;1&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;D:/DjangoProject/django/wcfrontend/src/pages&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;npm.dev.executor&quot;: &quot;Run&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.intellij.python.django.customization.DjangoModulesConfigurable&quot;,
+    &quot;ts.external.directory.path&quot;: &quot;D:\\PyCharm 2024.3\\plugins\\javascript-plugin\\jsLanguageServicesImpl\\external&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   },
-  "keyToStringList": {
-    "vue.recent.templates": [
-      "Vue Composition API Component"
+  &quot;keyToStringList&quot;: {
+    &quot;vue.recent.templates&quot;: [
+      &quot;Vue Composition API Component&quot;
     ]
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="D:\DjangoProject\django\wcfrontend\src\pages" />
@@ -191,7 +182,8 @@
       <workItem from="1761583576962" duration="2911000" />
       <workItem from="1761645458921" duration="88000" />
       <workItem from="1761720754854" duration="6363000" />
-      <workItem from="1762089798003" duration="22217000" />
+      <workItem from="1762089798003" duration="28843000" />
+      <workItem from="1762229339755" duration="1387000" />
     </task>
     <task id="LOCAL-00001" summary="第一版">
       <option name="closed" value="true" />
@@ -249,7 +241,15 @@
       <option name="project" value="LOCAL" />
       <updated>1762112410382</updated>
     </task>
-    <option name="localTasksCounter" value="8" />
+    <task id="LOCAL-00008" summary="2">
+      <option name="closed" value="true" />
+      <created>1762120695024</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1762120695024</updated>
+    </task>
+    <option name="localTasksCounter" value="9" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -270,7 +270,8 @@
     <MESSAGE value="第一版" />
     <MESSAGE value="第一二版" />
     <MESSAGE value="6" />
-    <option name="LAST_COMMIT_MESSAGE" value="6" />
+    <MESSAGE value="2" />
+    <option name="LAST_COMMIT_MESSAGE" value="2" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -290,14 +291,7 @@
           <option name="timeStamp" value="3" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
-          <url>file://$PROJECT_DIR$/wcfrontend/src/pages/MutualSelectionManagement.vue</url>
-          <line>120</line>
-          <properties lambdaOrdinal="-1" />
-          <option name="timeStamp" value="5" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/wcfrontend/src/pages/StudentTeam.vue</url>
-          <properties lambdaOrdinal="-1" />
           <option name="timeStamp" value="7" />
         </line-breakpoint>
       </breakpoints>

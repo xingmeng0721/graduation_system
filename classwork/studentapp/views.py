@@ -24,11 +24,8 @@ class StudentLoginView(views.APIView):
         user = authenticate(request, username=stu_no, password=password)
 
         if user and isinstance(user, Student):
-            # --- 关键：为学生用户也加入身份标识 ---
-            # for_user 会自动处理 user_id
             refresh = RefreshToken.for_user(user)
             refresh['user_type'] = 'student'
-            # --- 结束 ---
 
             return Response({
                 'refresh': str(refresh),
