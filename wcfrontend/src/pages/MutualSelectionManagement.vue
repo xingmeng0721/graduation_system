@@ -18,6 +18,7 @@
             <th>状态</th>
             <th>学生互选时间</th>
             <th>教师互选时间</th>
+            <th>教师可选小组数</th>
             <th>参与教师数</th>
             <th>参与学生数</th>
             <th>操作</th>
@@ -25,10 +26,10 @@
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td colspan="8" class="text-center">加载中...</td>
+            <td colspan="9" class="text-center">加载中...</td>
           </tr>
           <tr v-else-if="events.length === 0">
-            <td colspan="8" class="text-center">暂无数据</td>
+            <td colspan="9" class="text-center">暂无数据</td>
           </tr>
           <tr v-for="event in events" :key="event.event_id" :class="{ 'selected-row': selectedEvents.includes(event.event_id) }">
             <td><input type="checkbox" :value="event.event_id" v-model="selectedEvents" /></td>
@@ -38,6 +39,7 @@
             </td>
             <td>{{ formatDateTimeRange(event.stu_start_time, event.stu_end_time) }}</td>
             <td>{{ formatDateTimeRange(event.tea_start_time, event.tea_end_time) }}</td>
+            <td>{{ event.teacher_choice_limit }}</td>
             <td>{{ event.teacher_count }}</td>
             <td>{{ event.student_count }}</td>
             <td>
@@ -58,6 +60,7 @@
             <label>活动名称</label>
             <input type="text" v-model="currentEvent.event_name" required />
           </div>
+
           <div class="time-grid">
             <div class="form-group">
               <label>学生开始时间</label>
@@ -75,6 +78,12 @@
               <label>教师截止时间</label>
               <input type="datetime-local" v-model="currentEvent.tea_end_time" required />
             </div>
+          </div>
+
+          <!-- [修改] 新增教师可选小组数 -->
+          <div class="form-group">
+            <label>教师可选小组数</label>
+            <input type="number" v-model.number="currentEvent.teacher_choice_limit" required min="1" />
           </div>
 
           <!-- 教师选择 -->
@@ -112,7 +121,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import {ref, onMounted, computed} from 'vue';
 import api from '../services/api';
 import AdvancedMultiSelect from '../components/AdvancedMultiSelect.vue';
 
@@ -162,8 +171,8 @@ const teacherOptions = computed(() => {
 
 const studentOptions = computed(() => {
   const filtered = allStudents.value.filter(student =>
-    (!studentGradeFilter.value || student.grade === studentGradeFilter.value) &&
-    (!studentMajorFilter.value || student.major_name === studentMajorFilter.value)
+      (!studentGradeFilter.value || student.grade === studentGradeFilter.value) &&
+      (!studentMajorFilter.value || student.major_name === studentMajorFilter.value)
   );
   return filtered.map(student => ({
     value: student.stu_id,
@@ -173,8 +182,8 @@ const studentOptions = computed(() => {
 });
 
 const isAllSelected = computed(() => {
-    if (events.value.length === 0) return false;
-    return selectedEvents.value.length === events.value.length;
+  if (events.value.length === 0) return false;
+  return selectedEvents.value.length === events.value.length;
 });
 
 const uniqueGrades = computed(() => [...new Set(allStudents.value.map(s => s.grade))].sort());
@@ -215,6 +224,8 @@ const openModal = (event = null) => {
       stu_end_time: formatForInputLocal(event.stu_end_time),
       tea_start_time: formatForInputLocal(event.tea_start_time),
       tea_end_time: formatForInputLocal(event.tea_end_time),
+      // [修改] 确保 teacher_choice_limit 被正确填充
+      teacher_choice_limit: event.teacher_choice_limit || 5,
       teachers: event.teachers.map(t => t.teacher_id),
       students: event.students.map(s => s.stu_id),
     };
@@ -223,13 +234,17 @@ const openModal = (event = null) => {
     currentEvent.value = {
       event_name: '', stu_start_time: '', stu_end_time: '',
       tea_start_time: '', tea_end_time: '',
+      // [修改] 新建时设置默认值
+      teacher_choice_limit: 5,
       teachers: [], students: [],
     };
   }
   isModalVisible.value = true;
 };
 
-const closeModal = () => { isModalVisible.value = false; };
+const closeModal = () => {
+  isModalVisible.value = false;
+};
 
 // --- CRUD 操作 ---
 const handleSubmit = async () => {
@@ -261,9 +276,9 @@ const handleSubmit = async () => {
     const errorData = error.response?.data;
     let errorMsg = '请检查输入';
     if (typeof errorData === 'string') {
-        errorMsg = errorData;
+      errorMsg = errorData;
     } else if (errorData) {
-        errorMsg = Object.values(errorData).flat().join(' ');
+      errorMsg = Object.values(errorData).flat().join(' ');
     }
     alert(`保存失败: ${errorMsg}`);
   }
@@ -276,7 +291,10 @@ const handleDelete = async (id) => {
       alert("删除成功！");
       selectedEvents.value = selectedEvents.value.filter(val => val !== id);
       await fetchAllData();
-    } catch (error) { console.error("删除失败:", error); alert("删除失败！"); }
+    } catch (error) {
+      console.error("删除失败:", error);
+      alert("删除失败！");
+    }
   }
 };
 
@@ -284,21 +302,26 @@ const handleBulkDelete = async () => {
   if (selectedEvents.value.length === 0) return;
   if (confirm(`确定要删除选中的 ${selectedEvents.value.length} 个活动吗？`)) {
     try {
-      await api.bulkDeleteMutualSelectionEvents(selectedEvents.value);
+      await api.bulkDeleteMutualSelectionEvents({ids: selectedEvents.value});
       alert("批量删除成功！");
       selectedEvents.value = [];
       await fetchAllData();
-    } catch (error) { console.error("批量删除失败:", error); alert("批量删除失败！"); }
+    } catch (error) {
+      console.error("批量删除失败:", error);
+      alert("批量删除失败！");
+    }
   }
 };
 
 // --- 选择逻辑 ---
 const selectAllTeachers = () => {
   currentEvent.value.teachers = teacherOptions.value
-    .filter(opt => !opt.disabled)
-    .map(opt => opt.value);
+      .filter(opt => !opt.disabled)
+      .map(opt => opt.value);
 };
-const deselectAllTeachers = () => { currentEvent.value.teachers = []; };
+const deselectAllTeachers = () => {
+  currentEvent.value.teachers = [];
+};
 
 const selectAllFilteredStudents = () => {
   const currentSelected = new Set(currentEvent.value.students);
@@ -309,22 +332,22 @@ const selectAllFilteredStudents = () => {
   });
   currentEvent.value.students = Array.from(currentSelected);
 };
-const deselectAllStudents = () => { currentEvent.value.students = []; };
+const deselectAllStudents = () => {
+  currentEvent.value.students = [];
+};
 
 // --- 工具函数 ---
 const isTeacherBusy = (id) => busyTeacherIds.value.has(id);
 const isStudentBusy = (id) => busyStudentIds.value.has(id);
-const formatDateTime = (dt) => dt ? new Date(dt).toLocaleString('zh-CN', { hour12: false }) : '';
+const formatDateTime = (dt) => dt ? new Date(dt).toLocaleString('zh-CN', {hour12: false}) : '';
 const formatDateTimeRange = (start, end) => `${formatDateTime(start)} - ${formatDateTime(end)}`;
 const formatForInputLocal = (utcDateTime) => {
-    if (!utcDateTime) return '';
-    const date = new Date(utcDateTime);
-    const year = date.getFullYear();
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  if (!utcDateTime) return '';
+  const date = new Date(utcDateTime);
+  // 修复时区问题，转换为本地时间进行格式化
+  const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+  const localDate = new Date(date.getTime() - userTimezoneOffset);
+  return localDate.toISOString().slice(0, 16);
 };
 const getStatusClass = (status) => {
   if (status === '进行中') return 'ongoing';
@@ -337,38 +360,186 @@ const toggleSelectAll = (e) => {
 </script>
 
 <style scoped>
-.page-container { padding: 20px; }
-.actions-bar { margin-bottom: 20px; display: flex; gap: 10px; }
-.table-wrapper { overflow-x: auto; }
-.data-table { width: 100%; border-collapse: collapse; }
-.data-table th, .data-table td { border: 1px solid #ddd; padding: 10px; text-align: left; vertical-align: middle;}
-.data-table th { background-color: #f2f2f2; font-weight: 600; }
-.data-table tr.selected-row { background-color: #e9f5ff; }
-.text-center { text-align: center; }
-.btn { padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; transition: background-color 0.2s; }
-.btn:disabled { background-color: #ccc; cursor: not-allowed; }
-.btn-primary { background-color: #007bff; color: white; }
-.btn-secondary { background-color: #6c757d; color: white; }
-.btn-danger { background-color: #dc3545; color: white; }
-.btn-sm { padding: 4px 8px; font-size: 0.9em; margin-right: 5px;}
+.page-container {
+  padding: 20px;
+}
 
-.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; }
-.modal-content { background-color: white; padding: 30px; border-radius: 8px; width: 90%; max-width: 800px; max-height: 90vh; overflow-y: auto; }
-.form-group { margin-bottom: 20px; }
-.form-group label { display: block; margin-bottom: 8px; font-weight: 600; }
-.form-group input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-.modal-actions { text-align: right; margin-top: 20px; }
-.modal-actions .btn { margin-left: 10px; }
+.actions-bar {
+  margin-bottom: 20px;
+  display: flex;
+  gap: 10px;
+}
 
-.time-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-.student-filters { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
-.student-filters select { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
-.selection-actions { display: flex; gap: 10px; margin-bottom: 10px; }
-.btn-action { padding: 5px 10px; font-size: 0.9em; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; }
-.btn-action:hover { background-color: #5a6268; }
+.table-wrapper {
+  overflow-x: auto;
+}
 
-.status-badge { padding: 4px 8px; border-radius: 12px; color: white; font-size: 0.85em; font-weight: 600; }
-.status-pending { background-color: #ffc107; }
-.status-ongoing { background-color: #28a745; }
-.status-finished { background-color: #6c757d; }
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th, .data-table td {
+  border: 1px solid #ddd;
+  padding: 10px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.data-table th {
+  background-color: #f2f2f2;
+  font-weight: 600;
+}
+
+.data-table tr.selected-row {
+  background-color: #e9f5ff;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.btn {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background-color: #007bff;
+  color: white;
+}
+
+.btn-secondary {
+  background-color: #6c757d;
+  color: white;
+}
+
+.btn-danger {
+  background-color: #dc3545;
+  color: white;
+}
+
+.btn-sm {
+  padding: 4px 8px;
+  font-size: 0.9em;
+  margin-right: 5px;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: white;
+  padding: 30px;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.form-group input, .form-group select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.modal-actions {
+  text-align: right;
+  margin-top: 20px;
+}
+
+.modal-actions .btn {
+  margin-left: 10px;
+}
+
+.time-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.student-filters {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  align-items: center;
+}
+
+.student-filters select {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.selection-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.btn-action {
+  padding: 5px 10px;
+  font-size: 0.9em;
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-action:hover {
+  background-color: #5a6268;
+}
+
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  color: white;
+  font-size: 0.85em;
+  font-weight: 600;
+}
+
+.status-pending {
+  background-color: #ffc107;
+}
+
+.status-ongoing {
+  background-color: #28a745;
+}
+
+.status-finished {
+  background-color: #6c757d;
+}
 </style>

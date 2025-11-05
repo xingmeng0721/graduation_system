@@ -191,8 +191,13 @@ class MutualSelectionEventSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = MutualSelectionEvent
-        fields = ['event_id', 'event_name', 'stu_start_time', 'stu_end_time', 'tea_start_time', 'tea_end_time',
+        fields = ['event_id', 'event_name', 'stu_start_time', 'stu_end_time',
+                  'tea_start_time', 'tea_end_time', 'teacher_choice_limit',
                   'teachers', 'students']
+
+        extra_kwargs = {
+            'teacher_choice_limit': {'required': False}  # 默认为5，非必填
+        }
 
     def validate(self, data):
         """
@@ -249,38 +254,26 @@ class MutualSelectionEventSerializer(serializers.ModelSerializer):
 
 
 class MutualSelectionEventListSerializer(serializers.ModelSerializer):
-    """
-    用于展示互选活动列表和详情的序列化器。
-    """
     teachers = TeacherProfileSerializer(many=True, read_only=True)
     students = SimpleStudentSerializer(many=True, read_only=True)
     teacher_count = serializers.IntegerField(read_only=True)
     student_count = serializers.IntegerField(read_only=True)
-    # 新增：活动状态字段
     status = serializers.SerializerMethodField()
 
     class Meta:
         model = MutualSelectionEvent
+        # [修改] 增加了 teacher_choice_limit 字段
         fields = [
             'event_id', 'event_name', 'stu_start_time', 'stu_end_time',
-            'tea_start_time', 'tea_end_time', 'status',  # 添加 status 字段
+            'tea_start_time', 'tea_end_time', 'teacher_choice_limit', 'status',
             'teacher_count', 'student_count', 'teachers', 'students'
         ]
 
     def get_status(self, obj: MutualSelectionEvent) -> str:
-        """
-        根据当前时间判断活动状态。
-        - 未开始: 学生和老师的开始时间都晚于现在。
-        - 已结束: 学生和老师的结束时间都早于现在。
-        - 进行中: 其他所有情况。
-        """
         now = timezone.now()
-        # 如果最早的开始时间还没到，则活动“未开始”
         if obj.stu_start_time > now and obj.tea_start_time > now:
             return "未开始"
-        # 如果最晚的结束时间已过，则活动“已结束”
         elif obj.stu_end_time < now and obj.tea_end_time < now:
             return "已结束"
-        # 其他情况均为“进行中”
         else:
             return "进行中"

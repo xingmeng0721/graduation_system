@@ -5,13 +5,22 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="5a3f43bc-5135-4223-8a01-96f06d2dbf59" name="更改" comment="2">
-      <change afterPath="$PROJECT_DIR$/wcfrontend/src/components/AdvancedMultiSelect.vue" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/wcfrontend/src/pages/TeacherHistory.vue" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/wcfrontend/src/pages/TeacherHistoryDetail.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/studentapp/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/studentapp/serializers.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/studentapp/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/studentapp/views.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/teacherapp/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/teacherapp/serializers.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/classwork/adminapp/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/adminapp/models.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/classwork/adminapp/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/adminapp/serializers.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/classwork/adminapp/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/adminapp/views.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/classwork/teamapp/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/teamapp/models.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/classwork/teamapp/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/teamapp/serializers.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/classwork/teamapp/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/teamapp/views.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wcfrontend/src/layouts/StudentDashboard.vue" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/layouts/StudentDashboard.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wcfrontend/src/layouts/TeacherDashboard.vue" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/layouts/TeacherDashboard.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/wcfrontend/src/pages/MutualSelectionManagement.vue" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/pages/MutualSelectionManagement.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wcfrontend/src/pages/StudentProfile.vue" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/pages/StudentProfile.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wcfrontend/src/pages/StudentTeam.vue" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/pages/StudentTeam.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wcfrontend/src/pages/TeacherTeamSelection.vue" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/pages/TeacherTeamSelection.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wcfrontend/src/router/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/router/index.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wcfrontend/src/services/api.js" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/services/api.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -110,7 +119,7 @@
       <recent name="D:\DjangoProject\django\classwork\studentapp" />
     </key>
   </component>
-  <component name="RunManager" selected="npm.dev">
+  <component name="RunManager" selected="Django 服务器.未命名">
     <configuration name="未命名" type="Python.DjangoServer" factoryName="Django server" nameIsGenerated="true">
       <module name="django" />
       <option name="ENV_FILES" value="" />
@@ -183,7 +192,9 @@
       <workItem from="1761645458921" duration="88000" />
       <workItem from="1761720754854" duration="6363000" />
       <workItem from="1762089798003" duration="28843000" />
-      <workItem from="1762229339755" duration="1387000" />
+      <workItem from="1762229339755" duration="1862000" />
+      <workItem from="1762269917372" duration="368000" />
+      <workItem from="1762324112176" duration="5745000" />
     </task>
     <task id="LOCAL-00001" summary="第一版">
       <option name="closed" value="true" />
@@ -249,7 +260,15 @@
       <option name="project" value="LOCAL" />
       <updated>1762120695024</updated>
     </task>
-    <option name="localTasksCounter" value="9" />
+    <task id="LOCAL-00009" summary="2">
+      <option name="closed" value="true" />
+      <created>1762269456960</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1762269456960</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -260,7 +279,19 @@
       <map>
         <entry key="MAIN">
           <value>
-            <State />
+            <State>
+              <option name="FILTERS">
+                <map>
+                  <entry key="branch">
+                    <value>
+                      <list>
+                        <option value="1" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+            </State>
           </value>
         </entry>
       </map>

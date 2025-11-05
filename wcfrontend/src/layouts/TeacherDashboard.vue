@@ -8,6 +8,7 @@
         <!-- [修复] 将 to 的路径修改为正确的嵌套路由路径 -->
         <router-link to="/teacher/dashboard/profile" class="nav-item">个人信息</router-link>
         <router-link to="/teacher/dashboard/select-team" class="nav-item">选择指导团队</router-link>
+        <router-link to="/teacher/dashboard/history" class="nav-item">历史活动结果</router-link>
       </nav>
       <div class="sidebar-footer">
         <button @click="logout" class="logout-button">退出登录</button>

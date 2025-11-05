@@ -497,8 +497,7 @@ class MajorListView(generics.ListAPIView):
 
 class MutualSelectionEventViewSet(viewsets.ModelViewSet):
     """
-    [强化版] 互选活动管理视图集。
-    通过重写 update 和 destroy 方法，确保数据操作的安全性。
+    互选活动管理视图集。
     """
     queryset = MutualSelectionEvent.objects.prefetch_related(
         'teachers', 'students__major'

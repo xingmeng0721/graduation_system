@@ -166,12 +166,23 @@ export default {
     addMemberByCaptain(data) {
     return apiClient.post(`${TEAM_BASE}my-team/add-member/`, data);
   },
-    getTeamsForTeacher() {
-    // 新的URL是 /teams/teacher/teams/
-    return apiClient.get(`${TEAM_BASE}teacher/teams/`);
+  getStudentHistory() {
+    return apiClient.get(`${TEAM_BASE}student/history/`);
   },
-    teacherSelectTeam(groupId) {
-    // 新的URL是 /teams/{groupId}/teacher/select/
-    return apiClient.post(`${TEAM_BASE}${groupId}/teacher/select/`);
+  getStudentHistoryDetail(eventId) {
+    return apiClient.get(`${TEAM_BASE}${eventId}/student/history-detail/`);
+  },
+  getTeacherDashboard() {
+    return apiClient.get(`${TEAM_BASE}teacher/dashboard/`);
+  },
+  setTeacherPreferences(preferences) {
+    return apiClient.post(`${TEAM_BASE}teacher/set-preferences/`, { preferences });
+  },
+    getTeacherHistory() {
+    return apiClient.get(`${TEAM_BASE}teacher/history/`);
+  },
+  getTeacherHistoryDetail(eventId) {
+    // 注意：这里的 URL 是 /teams/{eventId}/teacher/history-detail/
+    return apiClient.get(`${TEAM_BASE}${eventId}/teacher/history-detail/`);
   },
 };

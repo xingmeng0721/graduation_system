@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 
 class Group(models.Model):
     """
-    增强版的分组/团队模型
+    分组/团队模型
     """
     group_id = models.AutoField(primary_key=True)
     group_name = models.CharField(max_length=255, verbose_name='分组名称')
@@ -126,3 +126,25 @@ class GroupMembership(models.Model):
 
     def __str__(self):
         return f"{self.student.stu_name} -> {self.group.group_name}"
+
+class TeacherGroupPreference(models.Model):
+    """
+    存储教师对团队的志愿选择。
+    """
+    teacher = models.ForeignKey('teacherapp.teacher', on_delete=models.CASCADE, related_name='group_preferences')
+    group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='teacher_preferences')
+    preference_rank = models.PositiveIntegerField(verbose_name='志愿顺序')
+
+    class Meta:
+        db_table = 'teacher_group_preference'
+        verbose_name = '教师组队志愿'
+        verbose_name_plural = verbose_name
+        # 确保一个老师对一个小组只能有一个志愿排名
+        # 并且，一个老师在一个活动中，每个志愿排名只能用一次
+        unique_together = [
+            ('teacher', 'group'),
+            ('teacher', 'preference_rank')
+        ]
+
+    def __str__(self):
+        return f"{self.teacher.teacher_name} - {self.preference_rank}志愿: {self.group.group_name}"

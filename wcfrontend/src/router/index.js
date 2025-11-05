@@ -61,6 +61,17 @@ const routes = [
       name: 'StudentTeam',
       component: () => import('../pages/StudentTeam.vue'),
     },
+        {
+        path: 'history',
+        name: 'StudentHistory',
+        component: () => import('../pages/StudentHistory.vue'),
+      },
+      {
+        path: 'history/:id',
+        name: 'StudentResultDetail',
+        component: () => import('../pages/StudentResultDetail.vue'),
+        props: true
+      },
   ]
   },
   {
@@ -70,10 +81,21 @@ const routes = [
     children: [
       { path: '', redirect: '/teacher/dashboard/profile' }, // 默认子路由，直接显示个人信息
       { path: 'profile', name: 'TeacherProfile', component: TeacherProfile },
-        {
+      {
         path: 'select-team',
         name: 'TeacherTeamSelection',
         component: () => import('../pages/TeacherTeamSelection.vue'), // 使用懒加载
+      },
+      {
+        path: 'history',
+        name: 'TeacherHistory',
+        component: () => import('../pages/TeacherHistory.vue'),
+      },
+      {
+        path: 'history/:id',
+        name: 'TeacherHistoryDetail',
+        component: () => import('../pages/TeacherHistoryDetail.vue'),
+        props: true // 将路由参数 :id 作为 props 传递给组件
       }
     ]
   }

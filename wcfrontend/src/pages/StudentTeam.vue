@@ -8,10 +8,10 @@
       </p>
     </div>
 
-    <!-- 全局加载与错误状态 -->
     <div v-if="loading" class="status-card">正在加载信息...</div>
     <div v-if="error" class="status-card error">{{ error }}</div>
 
+     <template v-if="dashboard.has_active_event && !loading">
     <!-- 场景一：已加入团队 -->
     <div v-if="dashboard.my_team_info && !loading" class="team-container">
       <!-- 左侧：团队信息 -->
@@ -92,11 +92,15 @@
         <button @click="openAllTeamsModal" class="btn btn-secondary full-width">查找所有团队</button>
       </div>
     </div>
+     </template>
 
     <!-- 场景三：无进行中的活动 -->
-    <div v-if="!dashboard.has_active_event && !loading" class="status-card">
+    <div v-if="!dashboard.has_active_event && !loading" class="status-card info-card-bg">
         <h3>当前没有正在进行的互选活动</h3>
-        <p>请耐心等待管理员开启新的活动，并留意通知。</p>
+        <p>您可以查看过去活动的结果，或浏览其他师生信息。</p>
+        <div class="card-actions">
+          <router-link to="/student/dashboard/history" class="btn btn-primary">查看历史活动</router-link>
+        </div>
     </div>
 
     <!-- 弹窗区 -->
@@ -848,4 +852,15 @@ const formatDate = (dateString) => {
   border: 1px solid #ddd;
   border-radius: 4px;
 }
+.page-container { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: #333; }
+.page-header { margin-bottom: 30px; }
+.page-header h1 { font-size: 2em; font-weight: 700; color: #2c3e50; }
+.page-header p { color: #555; font-size: 1em; }
+.info-card-bg { background-color: #e9f5ff; color: #0056b3; text-align: center; }
+.info-card-bg h3 { font-size: 1.5em; margin-bottom: 1rem; }
+.info-card-bg p { margin-bottom: 2rem; }
+.card-actions { display: flex; justify-content: center; gap: 1rem; border-top: none; }
+.btn { padding: 0.75rem 1.5rem; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; text-decoration: none; display: inline-block; }
+.btn-primary { background-color: #007bff; color: white; }
+.btn-secondary { background: #6c757d; color: white; }
 </style>
