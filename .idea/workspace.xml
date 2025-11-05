@@ -4,22 +4,12 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="5a3f43bc-5135-4223-8a01-96f06d2dbf59" name="更改" comment="2">
-      <change afterPath="$PROJECT_DIR$/wcfrontend/src/pages/TeacherHistory.vue" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wcfrontend/src/pages/TeacherHistoryDetail.vue" afterDir="false" />
+    <list default="true" id="5a3f43bc-5135-4223-8a01-96f06d2dbf59" name="更改" comment="自动分配算法完善前">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/adminapp/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/adminapp/models.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/adminapp/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/adminapp/serializers.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/adminapp/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/adminapp/views.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/classwork/teamapp/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/teamapp/models.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/classwork/teamapp/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/teamapp/serializers.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/classwork/teamapp/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/teamapp/views.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wcfrontend/src/layouts/StudentDashboard.vue" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/layouts/StudentDashboard.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wcfrontend/src/layouts/TeacherDashboard.vue" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/layouts/TeacherDashboard.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wcfrontend/src/pages/MutualSelectionManagement.vue" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/pages/MutualSelectionManagement.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wcfrontend/src/pages/StudentTeam.vue" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/pages/StudentTeam.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wcfrontend/src/pages/TeacherTeamSelection.vue" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/pages/TeacherTeamSelection.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wcfrontend/src/router/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/router/index.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wcfrontend/src/pages/AutoAssignment.vue" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/pages/AutoAssignment.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/wcfrontend/src/services/api.js" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/services/api.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -50,6 +40,19 @@
     </option>
   </component>
   <component name="Git.Settings">
+    <favorite-branches>
+      <branch-storage>
+        <map>
+          <entry type="LOCAL">
+            <value>
+              <list>
+                <branch-info repo="$PROJECT_DIR$" source="1" />
+              </list>
+            </value>
+          </entry>
+        </map>
+      </branch-storage>
+    </favorite-branches>
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
         <entry key="$PROJECT_DIR$" value="master" />
@@ -119,7 +122,7 @@
       <recent name="D:\DjangoProject\django\classwork\studentapp" />
     </key>
   </component>
-  <component name="RunManager" selected="Django 服务器.未命名">
+  <component name="RunManager" selected="npm.dev">
     <configuration name="未命名" type="Python.DjangoServer" factoryName="Django server" nameIsGenerated="true">
       <module name="django" />
       <option name="ENV_FILES" value="" />
@@ -195,6 +198,7 @@
       <workItem from="1762229339755" duration="1862000" />
       <workItem from="1762269917372" duration="368000" />
       <workItem from="1762324112176" duration="5745000" />
+      <workItem from="1762340893264" duration="3000000" />
     </task>
     <task id="LOCAL-00001" summary="第一版">
       <option name="closed" value="true" />

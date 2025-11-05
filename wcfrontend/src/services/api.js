@@ -106,8 +106,20 @@ export default {
   bulkDeleteMutualSelectionEvents(eventIds) {
     return apiClient.post(`${ADMIN_BASE}mutualselectionevents/bulk-delete/`, { ids: eventIds });
   },
-  autoAssignEvent(eventId) {
-    return apiClient.post(`${ADMIN_BASE}mutualselectionevents/${eventId}/auto-assign/`);
+  autoAssign(eventId) {
+    return apiClient.post(`${TEAM_BASE}${eventId}/admin/auto-assign/`);
+  },
+  getAssignments(eventId) {
+    return apiClient.get(`${TEAM_BASE}${eventId}/admin/get-assignments/`);
+  },
+  manualAssign(eventId, groupId, teacherId) {
+    return apiClient.post(`${TEAM_BASE}${eventId}/admin/manual-assign/`, {
+      group_id: groupId,
+      teacher_id: teacherId
+    });
+  },
+  publishAssignments(eventId) {
+    return apiClient.post(`${TEAM_BASE}${eventId}/admin/publish/`);
   },
   studentLogin(credentials) {
     return apiClient.post(`${STUDENT_BASE}login/`, credentials);

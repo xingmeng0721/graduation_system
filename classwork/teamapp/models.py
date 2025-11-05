@@ -148,3 +148,44 @@ class TeacherGroupPreference(models.Model):
 
     def __str__(self):
         return f"{self.teacher.teacher_name} - {self.preference_rank}志愿: {self.group.group_name}"
+
+
+class ProvisionalAssignment(models.Model):
+    """
+    存储自动分配或手动调整后的临时（草稿）分配结果。
+    """
+    event = models.ForeignKey(
+        'adminapp.MutualSelectionEvent',
+        on_delete=models.CASCADE,
+        related_name='provisional_assignments'
+    )
+    group = models.OneToOneField(
+        Group,
+        on_delete=models.CASCADE,
+        related_name='provisional_assignment'
+    )
+    teacher = models.ForeignKey(
+        'teacherapp.teacher',
+        on_delete=models.CASCADE,
+        related_name='provisional_assignments'
+    )
+    ASSIGNMENT_TYPE_CHOICES = [
+        ('auto', '自动分配'),
+        ('manual', '手动调整'),
+    ]
+    assignment_type = models.CharField(
+        max_length=10,
+        choices=ASSIGNMENT_TYPE_CHOICES,
+        default='auto'
+    )
+    score = models.FloatField(default=0, help_text="匹配得分")
+    explanation = models.CharField(max_length=255, blank=True, help_text="匹配原因说明")
+
+    class Meta:
+        db_table = 'provisional_assignment'
+        verbose_name = '临时分配结果'
+        verbose_name_plural = verbose_name
+        unique_together = ('event', 'group')  # 一个小组在一个活动中只应有一个临时分配
+
+    def __str__(self):
+        return f"{self.event.event_name}: {self.group.group_name} -> {self.teacher.teacher_name}"

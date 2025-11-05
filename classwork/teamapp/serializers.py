@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Group, GroupMembership
+from .models import Group, GroupMembership, ProvisionalAssignment
 from studentapp.models import Student
 from teacherapp.models import teacher
 from adminapp.models import MutualSelectionEvent
@@ -118,8 +118,6 @@ class GroupCreateUpdateSerializer(serializers.ModelSerializer):
 class TeacherPreferenceSerializer(serializers.Serializer):
     """
     接收教师提交的志愿列表。
-    期望格式: { "preferences": { "1": group_id_1, "2": group_id_2, ... } }
-    其中 key 是志愿排名(字符串)，value 是小组ID。
     """
     preferences = serializers.DictField(
         child=serializers.IntegerField(),
@@ -130,11 +128,16 @@ class TeacherPreferenceSerializer(serializers.Serializer):
         if not isinstance(value, dict):
             raise serializers.ValidationError("Preferences 必须是一个字典。")
 
+        # [彻底修复] 从 context 中获取 active_event
+        active_event = self.context.get('active_event')
+        if not active_event:
+            # 这是一个内部错误，正常情况下 context 总应该有 active_event
+            raise serializers.ValidationError("验证失败：缺少活动上下文。")
+
         limit = self.context.get('limit', 5)
         if len(value) > limit:
             raise serializers.ValidationError(f"您最多只能选择 {limit} 个志愿小组。")
 
-        # 检查 key (志愿排名) 和 value (小组ID)
         for rank, group_id in value.items():
             try:
                 rank_int = int(rank)
@@ -143,11 +146,26 @@ class TeacherPreferenceSerializer(serializers.Serializer):
             except (ValueError, TypeError):
                 raise serializers.ValidationError(f"志愿排名 '{rank}' 必须是整数。")
 
-            if not Group.objects.filter(pk=group_id).exists():
-                raise serializers.ValidationError(f"ID为 {group_id} 的小组不存在。")
+            # [彻底修复] 确保小组不仅存在，而且属于当前活动
+            if not Group.objects.filter(pk=group_id, event=active_event).exists():
+                raise serializers.ValidationError(f"ID为 {group_id} 的小组不存在或不属于当前活动。")
 
-        # 检查是否有重复的小组ID
         if len(set(value.values())) != len(value.values()):
             raise serializers.ValidationError("不能将同一个小组选为多个志愿。")
 
         return value
+
+
+
+
+class ProvisionalAssignmentSerializer(serializers.ModelSerializer):
+    group = GroupDetailSerializer(read_only=True)
+    teacher = TeamAdvisorSerializer(read_only=True)
+    event_id = serializers.IntegerField(source='event.event_id', read_only=True)
+
+    class Meta:
+        model = ProvisionalAssignment # 确保你已经从 .models 导入了 ProvisionalAssignment
+        fields = [
+            'id', 'event_id', 'group', 'teacher',
+            'assignment_type', 'score', 'explanation'
+        ]

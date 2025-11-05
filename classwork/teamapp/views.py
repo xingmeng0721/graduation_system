@@ -8,14 +8,21 @@ from rest_framework.response import Response
 from adminapp.models import MutualSelectionEvent
 from studentapp.models import Student
 from teacherapp.models import teacher
-from .models import Group, GroupMembership, TeacherGroupPreference
+from .models import Group, GroupMembership, TeacherGroupPreference,ProvisionalAssignment
 from .serializers import (
     GroupDetailSerializer,
     GroupCreateUpdateSerializer,
     TeamAdvisorSerializer,
     AvailableTeammateSerializer,
     TeacherPreferenceSerializer,
+    ProvisionalAssignmentSerializer,
 )
+from adminapp.models import AdminUser
+
+
+def is_admin(user):
+    return isinstance(user, AdminUser)
+
 
 
 class TeamViewSet(viewsets.GenericViewSet):
@@ -389,15 +396,160 @@ class TeamViewSet(viewsets.GenericViewSet):
         return Response(response_data)
 
     # --- 自动分配占位符 (保持不变) ---
-    @action(detail=True, methods=['post'], url_path='auto-assign')
-    def auto_assign(self, request, *args, **kwargs):
-        event = self.get_object()
+    @action(detail=True, methods=['post'], url_path='admin/auto-assign')
+    @transaction.atomic
+    def auto_assign(self, request, pk=None):
+        if not is_admin(request.user):
+            return Response({'error': '无权访问'}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            event = MutualSelectionEvent.objects.get(pk=pk)
+        except MutualSelectionEvent.DoesNotExist:
+            return Response({'error': '活动不存在'}, status=status.HTTP_404_NOT_FOUND)
+
         now = timezone.now()
-        if event.stu_end_time > now or event.tea_end_time > now:
-            return Response({'error': '该活动尚未对所有参与者结束，不能进行自动分配。'}, status=400)
+        if not (event.stu_end_time < now and event.tea_end_time < now):
+            return Response({'error': '活动尚未对所有参与者结束，不能进行分配。'}, status=status.HTTP_400_BAD_REQUEST)
+
+        ProvisionalAssignment.objects.filter(event=event).delete()
+
+        groups = list(Group.objects.filter(event=event))
+        teachers = list(event.teachers.all())
+        student_prefs = {g.group_id: [g.preferred_advisor_1_id, g.preferred_advisor_2_id, g.preferred_advisor_3_id] for
+                         g in groups}
+        teacher_prefs = {p.teacher_id: {pref.group_id: pref.preference_rank for pref in
+                                        p.group_preferences.filter(group__event=event)} for p in teachers}
+
+        teacher_capacity = {t.teacher_id: event.teacher_choice_limit for t in teachers}
+
+        scores = []
+        # 权重定义
+        TEACHER_WEIGHT_MULTIPLIER = 1.1
+        TEACHER_PREF_SCORES = {1: 10, 2: 8, 3: 6, 4: 4, 5: 2}  # 教师志愿基础分
+        STUDENT_PREF_SCORES = {1: 10, 2: 5, 3: 2}  # 学生志愿基础分
+
+        for group in groups:
+            for t in teachers:
+                teacher_score = 0
+                student_score = 0
+                explanation_parts = []
+
+                # 计算教师方得分
+                teacher_rank = teacher_prefs.get(t.teacher_id, {}).get(group.group_id)
+                if teacher_rank:
+                    teacher_score = TEACHER_PREF_SCORES.get(teacher_rank, 0)
+                    if teacher_score > 0:
+                        explanation_parts.append(f"师:{teacher_rank}志愿")
+
+                # 计算学生方得分
+                try:
+                    student_rank = student_prefs[group.group_id].index(t.teacher_id) + 1
+                    student_score = STUDENT_PREF_SCORES.get(student_rank, 0)
+                    if student_score > 0:
+                        explanation_parts.append(f"生:{student_rank}志愿")
+                except (ValueError, IndexError):
+                    pass
+
+                # 计算总分
+                total_score = (teacher_score * TEACHER_WEIGHT_MULTIPLIER) + student_score
+
+                if total_score > 0:
+                    scores.append({
+                        'group': group,
+                        'teacher': t,
+                        'score': round(total_score, 2),
+                        'explanation': " + ".join(explanation_parts) or "N/A"
+                    })
+
+        scores.sort(key=lambda x: x['score'], reverse=True)
+
+        assigned_groups = set()
+        provisional_assignments = []
+        for match in scores:
+            group, teacher_obj = match['group'], match['teacher']
+            if group.group_id in assigned_groups or teacher_capacity[teacher_obj.teacher_id] <= 0:
+                continue
+
+            provisional_assignments.append(
+                ProvisionalAssignment(event=event, group=group, teacher=teacher_obj, assignment_type='auto',
+                                      score=match['score'], explanation=match['explanation'])
+            )
+            assigned_groups.add(group.group_id)
+            teacher_capacity[teacher_obj.teacher_id] -= 1
+
+        ProvisionalAssignment.objects.bulk_create(provisional_assignments)
+
         return Response({
-            'message': '自动分配功能尚未实现，但接口已通。',
-            'assigned_count': 0,
-            'unassigned_count': len(event.students.all()),
-            'unassigned_students': [{'stu_name': s.stu_name} for s in event.students.all()],
-        }, status=200)
+            'message': f'自动分配完成！成功为 {len(provisional_assignments)} 个小组找到导师。',
+            'assigned_count': len(provisional_assignments),
+            'unassigned_count': len(groups) - len(provisional_assignments)
+        })
+
+    @action(detail=True, methods=['get'], url_path='admin/get-assignments')
+    def get_assignments(self, request, pk=None):
+        if not is_admin(request.user):
+            return Response({'error': '无权访问'}, status=status.HTTP_403_FORBIDDEN)
+
+        assignments = ProvisionalAssignment.objects.filter(event_id=pk).select_related('group', 'teacher',
+                                                                                       'group__captain').prefetch_related(
+            'group__members')
+        serializer = self.get_serializer(assignments, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'], url_path='admin/manual-assign')
+    @transaction.atomic
+    def manual_assign(self, request, pk=None):
+        if not is_admin(request.user):
+            return Response({'error': '无权访问'}, status=status.HTTP_403_FORBIDDEN)
+
+        event_id = pk
+        group_id = request.data.get('group_id')
+        teacher_id = request.data.get('teacher_id')
+
+        try:
+            event = MutualSelectionEvent.objects.get(pk=event_id)
+            group = Group.objects.get(pk=group_id, event_id=event_id)
+        except (MutualSelectionEvent.DoesNotExist, Group.DoesNotExist):
+            return Response({'error': '活动或小组不存在'}, status=status.HTTP_404_NOT_FOUND)
+
+        ProvisionalAssignment.objects.filter(group=group).delete()
+
+        if teacher_id:
+            try:
+                teacher_obj = event.teachers.get(pk=teacher_id)
+            except teacher.DoesNotExist:
+                return Response({'error': '该教师未参与此活动'}, status=status.HTTP_400_BAD_REQUEST)
+
+            assigned_count = ProvisionalAssignment.objects.filter(event=event, teacher=teacher_obj).count()
+            if assigned_count >= event.teacher_choice_limit:
+                return Response({'error': f'操作失败，教师 {teacher_obj.teacher_name} 的指导名额已满。'},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+            ProvisionalAssignment.objects.create(event=event, group=group, teacher=teacher_obj,
+                                                 assignment_type='manual', score=9999, explanation='管理员手动指定')
+            return Response({'message': f'已手动将小组“{group.group_name}”分配给 {teacher_obj.teacher_name}。'})
+
+        return Response({'message': f'已取消小组“{group.group_name}”的分配。'})
+
+    @action(detail=True, methods=['post'], url_path='admin/publish')
+    @transaction.atomic
+    def publish(self, request, pk=None):
+        if not is_admin(request.user):
+            return Response({'error': '无权访问'}, status=status.HTTP_403_FORBIDDEN)
+
+        event_id = pk
+        try:
+            event = MutualSelectionEvent.objects.get(pk=event_id)
+        except MutualSelectionEvent.DoesNotExist:
+            return Response({'error': '活动不存在'}, status=status.HTTP_404_NOT_FOUND)
+
+        Group.objects.filter(event=event).update(advisor=None)
+
+        provisional_assignments = ProvisionalAssignment.objects.filter(event=event)
+        if not provisional_assignments.exists():
+            return Response({'error': '没有可发布的分配结果'}, status=status.HTTP_400_BAD_REQUEST)
+
+        for pa in provisional_assignments:
+            Group.objects.filter(pk=pa.group_id).update(advisor=pa.teacher)
+
+        return Response({'message': f'结果发布成功！共为 {provisional_assignments.count()} 个团队确定了最终导师。'})
