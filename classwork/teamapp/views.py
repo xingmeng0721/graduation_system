@@ -322,7 +322,10 @@ class TeamViewSet(viewsets.GenericViewSet):
             return Response({'error': '当前没有正在进行的互选活动'}, status=status.HTTP_400_BAD_REQUEST)
 
         # 传入限制数进行验证
-        context = {'limit': active_event.teacher_choice_limit}
+        context = {
+            'active_event': active_event,
+            'limit': active_event.teacher_choice_limit
+        }
         serializer = self.get_serializer(data=request.data, context=context)
         serializer.is_valid(raise_exception=True)
 
@@ -493,7 +496,7 @@ class TeamViewSet(viewsets.GenericViewSet):
         assignments = ProvisionalAssignment.objects.filter(event_id=pk).select_related('group', 'teacher',
                                                                                        'group__captain').prefetch_related(
             'group__members')
-        serializer = self.get_serializer(assignments, many=True)
+        serializer = ProvisionalAssignmentSerializer(assignments, many=True)
         return Response(serializer.data)
 
     @action(detail=True, methods=['post'], url_path='admin/manual-assign')
