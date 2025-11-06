@@ -287,7 +287,6 @@ class DownloadStudentTemplateView(views.APIView):
 class BulkRegisterStudentsView(views.APIView):
     """
     通过上传Excel文件批量注册学生。
-    会自动跳过无效数据行，并报告错误。
     """
     parser_classes = (MultiPartParser, FormParser)
 
@@ -297,11 +296,10 @@ class BulkRegisterStudentsView(views.APIView):
             return Response({'error': '未找到上传的文件。'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            df = pd.read_excel(file_obj, dtype=str).fillna('')  # 读取所有数据为字符串，并将NaN替换为空字符串
+            df = pd.read_excel(file_obj, dtype=str).fillna('')
         except Exception as e:
             return Response({'error': f'无法解析Excel文件: {e}'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 检查必需的列
         required_columns = {'stu_no', 'stu_name', 'password', 'grade', 'major'}
         if not required_columns.issubset(df.columns):
             missing = required_columns - set(df.columns)
@@ -311,7 +309,6 @@ class BulkRegisterStudentsView(views.APIView):
         students_to_create = []
         failed_entries = []
 
-        # 预先获取所有已存在的学号，以减少数据库查询次数
         existing_stu_nos = set(Student.objects.values_list('stu_no', flat=True))
 
         for index, row in df.iterrows():
@@ -323,26 +320,20 @@ class BulkRegisterStudentsView(views.APIView):
             phone = row.get('phone', '').strip()
             email = row.get('email', '').strip()
 
-            # --- 数据校验 ---
-            row_num = index + 2  # Excel中的行号（考虑到表头）
+            row_num = index + 2
 
-            # 1. 检查必填字段
             if not all([stu_no, stu_name, password, grade, major_name]):
                 failed_entries.append(
                     {'row': row_num, 'stu_no': stu_no, 'error': '缺少必填字段 (学号, 姓名, 密码, 年级, 专业)。'})
                 continue
 
-            # 2. 检查学号是否已存在
             if stu_no in existing_stu_nos:
                 failed_entries.append({'row': row_num, 'stu_no': stu_no, 'error': f'学号 "{stu_no}" 已存在。'})
                 continue
 
-            # --- 准备数据 ---
             try:
-                # 获取或创建专业对象
                 major_obj, _ = Major.objects.get_or_create(major_name=major_name)
 
-                # 创建Student对象（但不保存）
                 student = Student(
                     stu_no=stu_no,
                     stu_name=stu_name,
@@ -351,21 +342,19 @@ class BulkRegisterStudentsView(views.APIView):
                     phone=phone if phone else None,
                     email=email if email else None,
                 )
-                student.set_password(password)  # 设置哈希密码
+                student.set_password(password)
                 students_to_create.append(student)
 
-                # 将刚验证通过的学号加入集合，防止Excel内部有重复学号
                 existing_stu_nos.add(stu_no)
 
             except Exception as e:
                 failed_entries.append({'row': row_num, 'stu_no': stu_no, 'error': f'创建学生对象时发生内部错误: {e}'})
 
-        # 使用事务一次性批量创建所有合法的学生
+
         if students_to_create:
             with transaction.atomic():
                 Student.objects.bulk_create(students_to_create)
 
-        # 构建最终的响应
         return Response({
             'message': f'处理完成。成功注册 {len(students_to_create)} 名学生。',
             'success_count': len(students_to_create),
@@ -587,15 +576,12 @@ class MutualSelectionEventViewSet(viewsets.ModelViewSet):
     @transaction.atomic
     def destroy(self, request, *args, **kwargs):
         """
-        [核心修复] 重写 destroy 方法，在删除活动前，先删除其下的所有团队。
+        重写 destroy 方法，在删除活动前，先删除其下的所有团队。
         """
         instance = self.get_object()
 
-        # 找到并删除与此活动相关的所有团队
-        # GroupMembership 会因为级联删除被自动清理
         Group.objects.filter(event=instance).delete()
 
-        # 现在可以安全地删除活动本身
         self.perform_destroy(instance)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -604,7 +590,7 @@ class MutualSelectionEventViewSet(viewsets.ModelViewSet):
     @transaction.atomic
     def bulk_delete(self, request, *args, **kwargs):
         """
-        [核心修复] 重写批量删除，确保关联的团队也被一并删除。
+        重写批量删除，确保关联的团队也被一并删除。
         """
         event_ids = request.data.get('ids')
         if not isinstance(event_ids, list) or not event_ids:
@@ -612,7 +598,6 @@ class MutualSelectionEventViewSet(viewsets.ModelViewSet):
 
         queryset = self.get_queryset().filter(event_id__in=event_ids)
 
-        # 在删除活动之前，先删除所有相关联的团队
         Group.objects.filter(event__in=queryset).delete()
 
         deleted_count, _ = queryset.delete()
@@ -626,7 +611,6 @@ class MutualSelectionEventViewSet(viewsets.ModelViewSet):
         """
         event = self.get_object()
 
-        # 检查学生和教师的互选时间是否都已结束
         now = timezone.now()
         if event.stu_end_time > now or event.tea_end_time > now:
             return Response({'error': '该活动尚未对所有参与者结束，不能进行自动分配。'}, status=400)
