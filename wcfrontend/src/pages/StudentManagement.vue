@@ -1,213 +1,363 @@
 <template>
-  <div>
-    <h1>学生管理</h1>
-    <div class="management-container">
-      <div class="form-card">
-        <h2>批量注册学生</h2>
-        <div class="bulk-register-actions">
-          <button @click="handleDownloadTemplate" class="btn-secondary">下载模板</button>
-          <input type="file" @change="handleFileChange" accept=".xlsx, .xls" ref="fileInput" style="display: none;" />
-          <button @click="$refs.fileInput.click()" class="btn-secondary">选择文件</button>
-          <button @click="handleBulkUpload" :disabled="!selectedFile || isUploading" class="btn-submit">
-            {{ isUploading ? '上传中...' : '上传并注册' }}
-          </button>
-        </div>
-        <p v-if="selectedFile" class="file-name-display">已选择文件: {{ selectedFile.name }}</p>
+  <div class="page-container">
+    <div class="page-header">
+      <h2>学生管理</h2>
+    </div>
 
-        <!-- 批量注册结果显示区域 -->
-        <div v-if="bulkResults" class="bulk-results">
-          <h4>注册结果</h4>
-          <p class="success-message">成功: {{ bulkResults.success_count }}</p>
-          <p class="error-message">失败: {{ bulkResults.failure_count }}</p>
-          <div v-if="bulkResults.failed_entries && bulkResults.failed_entries.length > 0">
-            <h5>失败详情:</h5>
-            <ul class="failed-list">
-              <li v-for="(item, index) in bulkResults.failed_entries" :key="index">
-                行 {{ item.row }}: (学号: {{ item.stu_no || '未知' }}) - {{ item.error }}
-              </li>
-            </ul>
-          </div>
+    <!-- 批量注册学生 -->
+    <el-card class="form-card" shadow="never">
+      <template #header>
+        <div class="card-header">
+          <span>批量注册学生</span>
         </div>
-        <div v-if="bulkError" class="error-message">{{ bulkError }}</div>
-      </div>
-      <!-- 其他模板部分保持不变 -->
-      <div class="form-card">
-        <h2>添加新学生</h2>
-        <form @submit.prevent="addStudent">
-          <div class="form-grid">
-            <div class="form-group">
-              <label>学号</label>
-              <input v-model="newStudent.stu_no" type="text" required />
-            </div>
-            <div class="form-group">
-              <label>姓名</label>
-              <input v-model="newStudent.stu_name" type="text" required />
-            </div>
-            <div class="form-group">
-              <label>初始密码</label>
-              <input v-model="newStudent.password" type="password" required />
-            </div>
-            <div class="form-group">
-              <label>年级</label>
-              <input v-model="newStudent.grade" type="text" required />
-            </div>
-            <div class="form-group">
-              <label>专业</label>
-              <input v-model="newStudent.major" type="text" required placeholder="请输入专业名称" />
-            </div>
-            <div class="form-group">
-              <label>手机号 (选填)</label>
-              <input v-model="newStudent.phone" type="text" />
-            </div>
-            <div class="form-group">
-              <label>邮箱 (选填)</label>
-              <input v-model="newStudent.email" type="email" />
-            </div>
-          </div>
-          <div v-if="addStudentError" class="error-message">{{ addStudentError }}</div>
-          <div v-if="addStudentSuccess" class="success-message">{{ addStudentSuccess }}</div>
-          <button type="submit" class="btn-submit">确认添加</button>
-        </form>
+      </template>
+
+      <div class="bulk-actions">
+        <el-button @click="handleDownloadTemplate">下载模板</el-button>
+        <el-upload
+          ref="uploadRef"
+          :auto-upload="false"
+          :limit="1"
+          accept=".xlsx,.xls"
+          :on-change="handleFileChange"
+          :show-file-list="false"
+        >
+          <el-button>选择文件</el-button>
+        </el-upload>
+        <el-button
+          type="primary"
+          @click="handleBulkUpload"
+          :disabled="!selectedFile"
+          :loading="isUploading"
+        >
+          {{ isUploading ? '上传中...' : '上传并注册' }}
+        </el-button>
       </div>
 
-      <div class="list-card">
+      <div v-if="selectedFile" class="file-info">
+        <el-tag type="info">已选择: {{ selectedFile.name }}</el-tag>
+      </div>
+
+      <!-- 批量注册结果 -->
+      <div v-if="bulkResults" class="bulk-results">
+        <el-divider />
+        <h4>注册结果</h4>
+        <el-row :gutter="20" class="result-summary">
+          <el-col :span="12">
+            <el-statistic title="成功" :value="bulkResults.success_count">
+              <template #suffix>
+                <el-icon style="color: #67c23a;"><SuccessFilled /></el-icon>
+              </template>
+            </el-statistic>
+          </el-col>
+          <el-col :span="12">
+            <el-statistic title="失败" :value="bulkResults.failure_count">
+              <template #suffix>
+                <el-icon style="color: #f56c6c;"><CircleCloseFilled /></el-icon>
+              </template>
+            </el-statistic>
+          </el-col>
+        </el-row>
+
+        <div v-if="bulkResults.failed_entries && bulkResults.failed_entries.length > 0" class="failed-details">
+          <h5>失败详情:</h5>
+          <el-scrollbar max-height="200px">
+            <div v-for="(item, index) in bulkResults.failed_entries" :key="index" class="failed-item">
+              <el-tag type="danger" size="small">行 {{ item.row }}</el-tag>
+              <span class="failed-text">学号: {{ item.stu_no || '未知' }} - {{ item.error }}</span>
+            </div>
+          </el-scrollbar>
+        </div>
+      </div>
+
+      <el-alert
+        v-if="bulkError"
+        :title="bulkError"
+        type="error"
+        :closable="false"
+        style="margin-top: 16px;"
+      />
+    </el-card>
+
+    <!-- 添加新学生 -->
+    <el-card class="form-card" shadow="never">
+      <template #header>
+        <div class="card-header">
+          <span>添加新学生</span>
+        </div>
+      </template>
+
+      <el-form
+        ref="addFormRef"
+        :model="newStudent"
+        label-width="100px"
+        @submit.prevent="addStudent"
+      >
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="学号">
+              <el-input v-model="newStudent.stu_no" placeholder="请输入学号" clearable />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="姓名">
+              <el-input v-model="newStudent.stu_name" placeholder="请输入姓名" clearable />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="初始密码">
+              <el-input v-model="newStudent.password" type="password" placeholder="请输入密码" show-password />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="年级">
+              <el-input v-model="newStudent.grade" placeholder="如: 2021" clearable />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="专业">
+              <el-input v-model="newStudent.major" placeholder="请输入专业名称" clearable />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="手机号">
+              <el-input v-model="newStudent.phone" placeholder="选填" clearable />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="邮箱">
+              <el-input v-model="newStudent.email" type="email" placeholder="选填" clearable />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-alert
+          v-if="addStudentError"
+          :title="addStudentError"
+          type="error"
+          :closable="false"
+          style="margin-bottom: 16px;"
+        />
+
+        <el-alert
+          v-if="addStudentSuccess"
+          :title="addStudentSuccess"
+          type="success"
+          :closable="false"
+          style="margin-bottom: 16px;"
+        />
+
+        <el-form-item>
+          <el-button type="primary" native-type="submit">确认添加</el-button>
+        </el-form-item>
+      </el-form>
+    </el-card>
+
+    <!-- 学生列表 -->
+    <el-card class="list-card" shadow="never">
+      <template #header>
         <div class="list-header">
-          <h2>学生列表</h2>
+          <span class="card-header">学生列表</span>
           <div class="filters">
-            <div class="form-group">
-              <label>搜索</label>
-              <input type="text" v-model="searchQuery" placeholder="按学号或姓名搜索..." />
-            </div>
-            <div class="form-group">
-              <label>按年级筛选</label>
-              <select v-model="selectedGrade">
-                <option value="">全部年级</option>
-                <option v-for="grade in uniqueGrades" :key="grade" :value="grade">
-                  {{ grade }}
-                </option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>按专业筛选</label>
-              <select v-model="selectedMajor">
-                <option value="">全部专业</option>
-                <option v-for="major in majors" :key="major.major_id" :value="major.major_name">
-                  {{ major.major_name }}
-                </option>
-              </select>
-            </div>
+            <el-input
+              v-model="searchQuery"
+              placeholder="按学号或姓名搜索"
+              clearable
+              style="width: 200px;"
+            >
+              <template #prefix>
+                <el-icon><Search /></el-icon>
+              </template>
+            </el-input>
+            <el-select v-model="selectedGrade" placeholder="选择年级" clearable style="width: 150px;">
+              <el-option
+                v-for="grade in uniqueGrades"
+                :key="grade"
+                :label="grade"
+                :value="grade"
+              />
+            </el-select>
+            <el-select v-model="selectedMajor" placeholder="选择专业" clearable style="width: 150px;">
+              <el-option
+                v-for="major in majors"
+                :key="major.major_id"
+                :label="major.major_name"
+                :value="major.major_name"
+              />
+            </el-select>
           </div>
         </div>
+      </template>
 
-        <div v-if="listSuccess" class="success-message">{{ listSuccess }}</div>
-        <div v-if="listError" class="error-message">{{ listError }}</div>
+      <el-alert
+        v-if="listSuccess"
+        :title="listSuccess"
+        type="success"
+        :closable="false"
+        style="margin-bottom: 16px;"
+      />
 
-        <div v-if="selectedStudentIds.size > 0" class="bulk-actions-bar">
-          <span>已选择 {{ selectedStudentIds.size }} 名学生</span>
-          <button @click="handleDeleteSelected" class="btn-danger">删除选中</button>
-        </div>
+      <el-alert
+        v-if="listError"
+        :title="listError"
+        type="error"
+        :closable="false"
+        style="margin-bottom: 16px;"
+      />
 
-        <table>
-          <thead>
-            <tr>
-              <th><input type="checkbox" :checked="isAllFilteredSelected" @change="toggleSelectAllFiltered" /></th>
-              <th>学号</th>
-              <th>姓名</th>
-              <th>年级</th>
-              <th>专业</th>
-              <th>手机号</th>
-              <th>邮箱</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="student in filteredStudents" :key="student.stu_id">
-              <td><input type="checkbox" :value="student.stu_id" v-model="selectedStudentIds" /></td>
-              <td>{{ student.stu_no }}</td>
-              <td>{{ student.stu_name }}</td>
-              <td>{{ student.grade }}</td>
-              <td>{{ student.major_name || '无' }}</td>
-              <td>{{ student.phone || '无' }}</td>
-              <td>{{ student.email || '无' }}</td>
-              <td>
-                <button @click="openEditModal(student)" class="btn-secondary-small">编辑</button>
-                <button @click="handleDeleteSingle(student)" class="btn-danger-small">删除</button>
-              </td>
-            </tr>
-            <tr v-if="filteredStudents.length === 0">
-              <td :colspan="8" style="text-align: center;">没有找到符合条件的学生。</td>
-            </tr>
-          </tbody>
-        </table>
+      <div v-if="selectedStudentIds.size > 0" class="bulk-actions-bar">
+        <span>已选择 {{ selectedStudentIds.size }} 名学生</span>
+        <el-button type="danger" size="small" @click="handleDeleteSelected">
+          删除选中
+        </el-button>
       </div>
-    </div>
-  <div v-if="editingStudent" class="modal-overlay" @click.self="closeEditModal">
-      <div class="modal-content">
-        <h2>编辑学生信息</h2>
-        <form @submit.prevent="handleUpdateStudent">
-          <div class="form-grid">
-            <div class="form-group">
-              <label>学号</label>
-              <input v-model="editingStudent.stu_no" type="text" required />
-            </div>
-            <div class="form-group">
-              <label>姓名</label>
-              <input v-model="editingStudent.stu_name" type="text" required />
-            </div>
-            <div class="form-group">
-              <label>年级</label>
-              <input v-model="editingStudent.grade" type="text" required />
-            </div>
-            <div class="form-group">
-              <label>专业</label>
-              <select v-model="editingStudent.major">
-                <option v-for="major in majors" :key="major.major_id" :value="major.major_name">
-                  {{ major.major_name }}
-                </option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>手机号</label>
-              <input v-model="editingStudent.phone" type="text" />
-            </div>
-            <div class="form-group">
-              <label>邮箱</label>
-              <input v-model="editingStudent.email" type="email" />
-            </div>
-            <div class="form-group">
-              <label>新密码 (留空则不修改)</label>
-              <input v-model="editingStudent.password" type="password" placeholder="输入新密码" />
-            </div>
-          </div>
-          <div v-if="editError" class="error-message">{{ editError }}</div>
-          <div class="modal-actions">
-            <button type="button" @click="closeEditModal" class="btn-secondary">取消</button>
-            <button type="submit" class="btn-submit">保存更改</button>
-          </div>
-        </form>
-      </div>
-    </div>
+
+      <el-table
+        :data="filteredStudents"
+        stripe
+        style="width: 100%"
+        @selection-change="handleSelectionChange"
+      >
+        <el-table-column type="selection" width="55" />
+        <el-table-column prop="stu_no" label="学号" min-width="120" />
+        <el-table-column prop="stu_name" label="姓名" min-width="100" />
+        <el-table-column prop="grade" label="年级" width="100" />
+        <el-table-column prop="major_name" label="专业" min-width="120">
+          <template #default="{ row }">
+            {{ row.major_name || '无' }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="phone" label="手机号" min-width="130">
+          <template #default="{ row }">
+            {{ row.phone || '无' }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="email" label="邮箱" min-width="180">
+          <template #default="{ row }">
+            {{ row.email || '无' }}
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="150" fixed="right">
+          <template #default="{ row }">
+            <el-button type="primary" size="small" link @click="openEditModal(row)">
+              编辑
+            </el-button>
+            <el-button type="danger" size="small" link @click="handleDeleteSingle(row)">
+              删除
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <el-empty v-if="filteredStudents.length === 0" description="没有找到符合条件的学生" />
+    </el-card>
+
+    <!-- 编辑学生对话框 -->
+    <el-dialog
+      v-model="editDialogVisible"
+      title="编辑学生信息"
+      width="700px"
+      :close-on-click-modal="false"
+    >
+      <el-form
+        v-if="editingStudent"
+        ref="editFormRef"
+        :model="editingStudent"
+        label-width="100px"
+      >
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="学号">
+              <el-input v-model="editingStudent.stu_no" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="姓名">
+              <el-input v-model="editingStudent.stu_name" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="年级">
+              <el-input v-model="editingStudent.grade" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="专业">
+              <el-select v-model="editingStudent.major" placeholder="选择专业" style="width: 100%;">
+                <el-option
+                  v-for="major in majors"
+                  :key="major.major_id"
+                  :label="major.major_name"
+                  :value="major.major_name"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="手机号">
+              <el-input v-model="editingStudent.phone" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="邮箱">
+              <el-input v-model="editingStudent.email" type="email" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-form-item label="新密码">
+          <el-input
+            v-model="editingStudent.password"
+            type="password"
+            placeholder="留空则不修改"
+            show-password
+          />
+        </el-form-item>
+
+        <el-alert
+          v-if="editError"
+          :title="editError"
+          type="error"
+          :closable="false"
+        />
+      </el-form>
+
+      <template #footer>
+        <el-button @click="closeEditModal">取消</el-button>
+        <el-button type="primary" @click="handleUpdateStudent">保存更改</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue';
-import api from '../services/api';
+import { ref, onMounted, computed, watch } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Search, SuccessFilled, CircleCloseFilled } from '@element-plus/icons-vue'
+import api from '../services/api'
 
-const addStudentError = ref(null);
-const addStudentSuccess = ref(null);
-const listError = ref(null);
-const listSuccess = ref(null);
-const students = ref([]);
-const majors = ref([]);
-const error = ref(null);
-const success = ref(null);
-const searchQuery = ref('');
-const selectedGrade = ref('');
-const selectedMajor = ref('');
-const selectedStudentIds = ref(new Set());
-const editingStudent = ref(null);
-const editError = ref(null);
+// 状态定义
+const students = ref([])
+const majors = ref([])
+const searchQuery = ref('')
+const selectedGrade = ref('')
+const selectedMajor = ref('')
+const selectedStudentIds = ref(new Set())
+const editDialogVisible = ref(false)
+const editingStudent = ref(null)
+
 const newStudent = ref({
   stu_no: '',
   stu_name: '',
@@ -215,246 +365,347 @@ const newStudent = ref({
   grade: '',
   phone: '',
   major: '',
-  email: '',
-});
-const selectedFile = ref(null);
-const isUploading = ref(false);
-const bulkResults = ref(null);
-const bulkError = ref(null);
+  email: ''
+})
 
+// 批量注册
+const selectedFile = ref(null)
+const isUploading = ref(false)
+const bulkResults = ref(null)
+const bulkError = ref(null)
+
+// 消息
+const addStudentError = ref(null)
+const addStudentSuccess = ref(null)
+const listError = ref(null)
+const listSuccess = ref(null)
+const editError = ref(null)
+
+// 数据获取
 const fetchData = async () => {
   try {
     const [studentsRes, majorsRes] = await Promise.all([
       api.getStudents(),
-      api.getMajors(),
-    ]);
-    students.value = studentsRes.data;
-    majors.value = majorsRes.data;
+      api.getMajors()
+    ])
+    students.value = studentsRes.data
+    majors.value = majorsRes.data
   } catch (err) {
-    console.error("Failed to fetch initial data:", err);
-    listError.value = "加载核心数据失败，请刷新页面。";
+    console.error('Failed to fetch data:', err)
+    listError.value = '加载数据失败，请刷新页面'
   }
-};
+}
 
-onMounted(fetchData);
+onMounted(fetchData)
 
+// 计算属性
 const filteredStudents = computed(() => {
-  let result = students.value;
+  let result = students.value
+
   if (searchQuery.value) {
-    const lowerCaseQuery = searchQuery.value.toLowerCase();
-    result = result.filter(student =>
-      student.stu_name.toLowerCase().includes(lowerCaseQuery) ||
-      student.stu_no.toLowerCase().includes(lowerCaseQuery)
-    );
+    const query = searchQuery.value.toLowerCase()
+    result = result.filter(s =>
+      s.stu_name.toLowerCase().includes(query) ||
+      s.stu_no.toLowerCase().includes(query)
+    )
   }
+
   if (selectedGrade.value) {
-    result = result.filter(student => student.grade === selectedGrade.value);
+    result = result.filter(s => s.grade === selectedGrade.value)
   }
+
   if (selectedMajor.value) {
-    result = result.filter(student => student.major_name === selectedMajor.value);
+    result = result.filter(s => s.major_name === selectedMajor.value)
   }
-  return result;
-});
+
+  return result
+})
 
 const uniqueGrades = computed(() => {
-  const grades = students.value.map(s => s.grade);
-  return [...new Set(grades)].sort();
-});
+  const grades = students.value.map(s => s.grade)
+  return [...new Set(grades)].sort()
+})
 
-const isAllFilteredSelected = computed(() => {
-  const filteredIds = filteredStudents.value.map(s => s.stu_id);
-  if (filteredIds.length === 0) return false;
-  return filteredIds.every(id => selectedStudentIds.value.has(id));
-});
-
+// 监听筛选变化
 watch([selectedGrade, selectedMajor], () => {
-  selectedStudentIds.value.clear();
-});
+  selectedStudentIds.value.clear()
+})
 
-const openEditModal = (student) => {
-  editingStudent.value = { ...student, major: student.major_name, password: '' };
-  editError.value = null;
-};
+// 清空消息
+const clearMessages = () => {
+  addStudentError.value = null
+  addStudentSuccess.value = null
+  listError.value = null
+  listSuccess.value = null
+  editError.value = null
+  bulkError.value = null
+}
 
-const handleUpdateStudent = async () => {
-  if (!editingStudent.value) return;
-  const studentData = { ...editingStudent.value };
-  if (!studentData.password) {
-    delete studentData.password;
+// 添加学生
+const addStudent = async () => {
+  clearMessages()
+
+  if (!newStudent.value.stu_no || !newStudent.value.stu_name || !newStudent.value.password) {
+    addStudentError.value = '请填写必填项'
+    return
   }
+
   try {
-    await api.updateStudent(studentData.stu_id, studentData);
-    listSuccess.value = `学生 ${studentData.stu_name} 的信息已更新。`;
-    closeEditModal();
-    await fetchData();
+    const response = await api.createStudent(newStudent.value)
+    addStudentSuccess.value = `学生 ${response.data.stu_name} 添加成功！`
+    ElMessage.success(addStudentSuccess.value)
+
+    // 清空表单
+    Object.keys(newStudent.value).forEach(key => newStudent.value[key] = '')
+    await fetchData()
   } catch (err) {
-    editError.value = "更新失败：" + (err.response?.data?.detail || '请检查输入。');
+    addStudentError.value = '添加失败：' + (err.response?.data?.detail || '请检查输入')
+    ElMessage.error(addStudentError.value)
   }
-};
+}
+
+// 编辑学生
+const openEditModal = (student) => {
+  editingStudent.value = { ...student, major: student.major_name, password: '' }
+  editError.value = null
+  editDialogVisible.value = true
+}
 
 const closeEditModal = () => {
-  editingStudent.value = null;
-};
+  editDialogVisible.value = false
+  editingStudent.value = null
+}
 
-const toggleSelectAllFiltered = (event) => {
-  const isChecked = event.target.checked;
-  const filteredIds = filteredStudents.value.map(s => s.stu_id);
-  if (isChecked) {
-    filteredIds.forEach(id => selectedStudentIds.value.add(id));
-  } else {
-    filteredIds.forEach(id => selectedStudentIds.value.delete(id));
+const handleUpdateStudent = async () => {
+  clearMessages()
+
+  if (!editingStudent.value) return
+
+  const studentData = { ...editingStudent.value }
+  if (!studentData.password) {
+    delete studentData.password
   }
-};
 
+  try {
+    await api.updateStudent(studentData.stu_id, studentData)
+    listSuccess.value = `学生 ${studentData.stu_name} 的信息已更新`
+    ElMessage.success(listSuccess.value)
+    closeEditModal()
+    await fetchData()
+  } catch (err) {
+    editError.value = '更新失败：' + (err.response?.data?.detail || '请检查输入')
+  }
+}
+
+// 删除学生
 const handleDeleteSingle = async (student) => {
-  if (confirm(`确定要删除学生 ${student.stu_name} (学号: ${student.stu_no}) 吗？`)) {
-    try {
-      await api.deleteStudent(student.stu_id);
-      listSuccess.value = `学生 ${student.stu_name} 已删除。`;
-      await fetchData();
-    } catch (err) {
-      listError.value = `删除失败: ${err.response?.data?.detail || '服务器错误'}`;
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除学生 ${student.stu_name} (学号: ${student.stu_no}) 吗？`,
+      '提示',
+      { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
+    )
+
+    await api.deleteStudent(student.stu_id)
+    listSuccess.value = `学生 ${student.stu_name} 已删除`
+    ElMessage.success(listSuccess.value)
+    await fetchData()
+  } catch (err) {
+    if (err !== 'cancel') {
+      listError.value = `删除失败: ${err.response?.data?.detail || '服务器错误'}`
+      ElMessage.error(listError.value)
     }
   }
-};
+}
+
+// 表格选择
+const handleSelectionChange = (selection) => {
+  selectedStudentIds.value = new Set(selection.map(s => s.stu_id))
+}
 
 const handleDeleteSelected = async () => {
-  if (selectedStudentIds.value.size === 0) return;
-  if (confirm(`确定要删除选中的 ${selectedStudentIds.value.size} 名学生吗？`)) {
-    try {
-      const idsToDelete = Array.from(selectedStudentIds.value);
-      await api.bulkDeleteStudents(idsToDelete);
-      listSuccess.value = `成功删除 ${idsToDelete.length} 名学生。`;
-      selectedStudentIds.value.clear();
-      await fetchData();
-    } catch (err) {
-      listError.value = `批量删除失败: ${err.response?.data?.error || '服务器错误'}`;
+  if (selectedStudentIds.value.size === 0) return
+
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除选中的 ${selectedStudentIds.value.size} 名学生吗？`,
+      '提示',
+      { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
+    )
+
+    const idsToDelete = Array.from(selectedStudentIds.value)
+    await api.bulkDeleteStudents(idsToDelete)
+    listSuccess.value = `成功删除 ${idsToDelete.length} 名学生`
+    ElMessage.success(listSuccess.value)
+    selectedStudentIds.value.clear()
+    await fetchData()
+  } catch (err) {
+    if (err !== 'cancel') {
+      listError.value = `批量删除失败: ${err.response?.data?.error || '服务器错误'}`
+      ElMessage.error(listError.value)
     }
   }
-};
+}
 
-const addStudent = async () => {
-  addStudentError.value = null;
-  addStudentSuccess.value = null;
-  try {
-    const response = await api.createStudent(newStudent.value);
-    addStudentSuccess.value = `学生 ${response.data.stu_name} 添加成功！`;
-    Object.keys(newStudent.value).forEach(key => newStudent.value[key] = '');
-    await fetchData();
-  } catch (err) {
-    addStudentError.value = "添加失败：" + (err.response?.data?.detail || '请检查输入。');
-  }
-};
-
-const handleFileChange = (event) => {
-  selectedFile.value = event.target.files[0];
-  bulkResults.value = null;
-  bulkError.value = null;
-};
-
+// 批量注册
 const handleDownloadTemplate = async () => {
   try {
-    const response = await api.downloadStudentTemplate();
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', 'student_registration_template.xlsx');
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
+    const response = await api.downloadStudentTemplate()
+    const url = window.URL.createObjectURL(new Blob([response.data]))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', 'student_registration_template.xlsx')
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    ElMessage.success('模板下载成功')
   } catch (err) {
-    bulkError.value = "下载模板失败。";
+    bulkError.value = '下载模板失败'
+    ElMessage.error(bulkError.value)
   }
-};
+}
 
-// --- 最终解决方案 ---
+const handleFileChange = (file) => {
+  selectedFile.value = file
+  bulkResults.value = null
+  bulkError.value = null
+}
+
 const handleBulkUpload = async () => {
   if (!selectedFile.value) {
-    bulkError.value = "请先选择一个文件。";
-    return;
+    bulkError.value = '请先选择文件'
+    return
   }
-  isUploading.value = true;
-  bulkError.value = null;
-  bulkResults.value = null;
+
+  isUploading.value = true
+  bulkError.value = null
+  bulkResults.value = null
 
   try {
-    const response = await api.bulkRegisterStudents(selectedFile.value);
-    // 无论如何，先显示后端返回的结果
-    bulkResults.value = response.data;
+    const response = await api.bulkRegisterStudents(selectedFile.value.raw)
+    bulkResults.value = response.data
+    ElMessage.success('批量注册完成')
   } catch (err) {
-    console.error("Failed to bulk register:", err);
-    // 如果API调用出错（例如返回400状态码）
-    // 检查响应体中是否有数据，如果有，就显示它
+    console.error('Failed to bulk register:', err)
     if (err.response && err.response.data) {
-        bulkResults.value = err.response.data;
-        // 并且额外设置一个全局错误提示
-        bulkError.value = `上传处理完成，但有 ${err.response.data.failure_count || 0} 个条目失败。`;
+      bulkResults.value = err.response.data
+      bulkError.value = `上传处理完成，但有 ${err.response.data.failure_count || 0} 个条目失败`
     } else {
-        // 如果是网络错误或其他没有响应体的错误
-        bulkError.value = "上传失败：" + (err.message || '服务器发生未知错误。');
+      bulkError.value = '上传失败：' + (err.message || '服务器发生未知错误')
     }
   } finally {
-    isUploading.value = false;
-    // 清空文件输入框
-    if (document.querySelector('input[type=file]')) {
-      document.querySelector('input[type=file]').value = '';
-    }
-    selectedFile.value = null;
-    // 刷新列表数据
-    await fetchData();
+    isUploading.value = false
+    selectedFile.value = null
+    await fetchData()
   }
-};
+}
 </script>
 
 <style scoped>
-.management-container { display: flex; flex-direction: column; gap: 40px; }
-.form-card, .list-card { background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); }
-.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
-.form-group { display: flex; flex-direction: column; }
-label { margin-bottom: 8px; font-weight: 600; }
-input[type="text"], input[type="password"], input[type="email"], select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-.btn-submit { margin-top: 20px; padding: 12px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background-color 0.2s; }
-.btn-submit:disabled { background-color: #a0cffc; cursor: not-allowed; }
-.error-message, .success-message { text-align: left; margin-top: 15px; padding: 10px; border-radius: 4px; }
-.error-message { color: #dc3545; background-color: #f8d7da; }
-.success-message { color: #155724; background-color: #d4edda; }
-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-th { background-color: #f2f2f2; }
-.bulk-register-actions { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
-.btn-secondary { padding: 12px 20px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background-color 0.2s; }
-.btn-secondary:hover { background-color: #5a6268; }
-.file-name-display { margin-top: 15px; font-style: italic; color: #555; }
-.bulk-results { margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px; }
-.bulk-results h4 { margin-bottom: 10px; }
-.bulk-results .success-message, .bulk-results .error-message { text-align: left; margin: 5px 0; padding: 5px 10px; }
-.failed-list { list-style-type: none; padding-left: 0; margin-top: 10px; }
-.failed-list li { background-color: #f8d7da; color: #721c24; padding: 8px; border-radius: 4px; margin-bottom: 5px; font-size: 0.9em; }
-.list-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; margin-bottom: 20px; }
-.filters { display: flex; gap: 20px; align-items: flex-end; }
-.filters .form-group { margin-bottom: 0; }
-.filters label { font-size: 0.9em; margin-bottom: 5px; }
-.filters select { padding: 8px; min-width: 150px; }
-.bulk-actions-bar { background-color: #e9f5ff; border: 1px solid #b3d9ff; border-radius: 6px; padding: 10px 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
-.bulk-actions-bar span { font-weight: 600; color: #0056b3; }
-.btn-danger { padding: 8px 15px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; }
-.btn-danger-small { padding: 5px 10px; font-size: 0.8em; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; }
-table th:first-child, table td:first-child { width: 40px; text-align: center; }
-.filters input[type="text"] { padding: 8px; }
-.btn-secondary-small {
-  padding: 5px 10px; font-size: 0.8em; background-color: #6c757d;
-  color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;
+.page-container {
+  max-width: 1600px;
 }
-.modal-overlay {
-  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-  background-color: rgba(0, 0, 0, 0.6); display: flex;
-  justify-content: center; align-items: center; z-index: 1000;
+
+.page-header {
+  margin-bottom: 20px;
 }
-.modal-content {
-  background: white; padding: 30px 40px; border-radius: 8px;
-  width: 90%; max-width: 800px; max-height: 90vh; overflow-y: auto;
+
+.page-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #303133;
 }
-.modal-actions {
-  display: flex; justify-content: flex-end; gap: 15px; margin-top: 30px;
+
+.form-card,
+.list-card {
+  margin-bottom: 20px;
+  border-radius: 8px;
+}
+
+.card-header {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.bulk-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.file-info {
+  margin-top: 16px;
+}
+
+.bulk-results {
+  margin-top: 20px;
+}
+
+.bulk-results h4,
+.bulk-results h5 {
+  margin: 16px 0;
+  font-weight: 600;
+  color: #303133;
+}
+
+.result-summary {
+  margin: 20px 0;
+}
+
+.failed-details {
+  margin-top: 20px;
+}
+
+.failed-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.failed-text {
+  flex: 1;
+  color: #606266;
+  font-size: 14px;
+}
+
+.list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.filters {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.bulk-actions-bar {
+  background-color: #ecf5ff;
+  border: 1px solid #d9ecff;
+  border-radius: 4px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.bulk-actions-bar span {
+  font-weight: 600;
+  color: #409eff;
+}
+
+@media (max-width: 1200px) {
+  .list-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 </style>

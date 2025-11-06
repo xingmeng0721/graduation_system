@@ -111,7 +111,6 @@ class TeamViewSet(viewsets.GenericViewSet):
 
     @action(detail=False, methods=['get'], url_path='student/history')
     def student_history(self, request):
-        # ✅ 修正：使用 student 而不是 current_student
         student = request.user
         if not isinstance(student, Student):
             return Response(

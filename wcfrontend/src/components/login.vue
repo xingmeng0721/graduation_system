@@ -1,270 +1,444 @@
 <template>
-  <div class="auth-container">
-    <div class="auth-card">
-      <!-- 切换用户类型的Tabs -->
-      <div class="user-type-switcher">
-        <button
-          :class="{ active: userType === 'admin' }"
-          @click="switchUserType('admin')">
-          管理员登录
-        </button>
-        <button
-          :class="{ active: userType === 'teacher' }"
-          @click="switchUserType('teacher')">
-          教师
-        </button>
-        <button
-          :class="{ active: userType === 'student' }"
-          @click="switchUserType('student')">
-          学生登录
-        </button>
+  <div class="login-container">
+    <el-card class="login-card" shadow="hover">
+      <!-- 标题 -->
+      <div class="login-header">
+        <h2 class="system-title">师生双选系统</h2>
       </div>
 
-      <h2 class="form-title">{{ formTitle }}</h2>
+      <!-- 用户类型切换 -->
+      <el-segmented
+        v-model="userType"
+        :options="userTypeOptions"
+        size="large"
+        block
+        class="user-type-selector"
+      />
 
-      <div v-if="notification" class="notification-message">{{ notification }}</div>
+      <!-- 消息提示 -->
+      <el-alert
+        v-if="notification"
+        :title="notification"
+        type="info"
+        :closable="false"
+        center
+        class="message-alert"
+      />
 
-      <form @submit.prevent="handleLogin">
-        <!-- 动态表单内容 -->
-        <div class="form-group">
-          <label :for="usernameFieldId">{{ usernameLabel }}</label>
-          <input type="text" :id="usernameFieldId" v-model="credentials.username" required>
+      <!-- 登录表单 -->
+      <el-form
+        ref="loginFormRef"
+        :model="credentials"
+        label-position="top"
+        size="large"
+        class="login-form"
+        @submit.prevent="handleLogin"
+      >
+        <el-form-item :label="usernameLabel">
+          <el-input
+            v-model="credentials.username"
+            :placeholder="`请输入${usernameLabel}`"
+            clearable
+            @keyup.enter="handleLogin"
+          />
+        </el-form-item>
+
+        <el-form-item label="密码">
+          <el-input
+            v-model="credentials.password"
+            type="password"
+            placeholder="请输入密码"
+            show-password
+            @keyup.enter="handleLogin"
+          />
+        </el-form-item>
+
+        <!-- 忘记密码 -->
+        <div v-if="userType === 'student'" class="extra-options">
+          <el-link type="primary" :underline="false" @click="openForgotPasswordModal">
+            忘记密码？
+          </el-link>
         </div>
-        <div class="form-group">
-          <label for="password">密码</label>
-          <input type="password" id="password" v-model="credentials.password" required>
+
+        <!-- 错误提示 -->
+        <el-alert
+          v-if="error"
+          :title="error"
+          type="error"
+          :closable="false"
+          center
+          class="message-alert"
+        />
+
+        <el-button
+          type="primary"
+          size="large"
+          :loading="isLoading"
+          native-type="submit"
+          class="login-button"
+        >
+          {{ isLoading ? '登录中...' : '登 录' }}
+        </el-button>
+      </el-form>
+    </el-card>
+
+    <!-- 忘记密码对话框 -->
+    <el-dialog
+      v-model="isForgotPasswordModalVisible"
+      :title="resetStep === 1 ? '重置密码' : '设置新密码'"
+      width="420px"
+      center
+    >
+      <!-- 步骤一：发送验证码 -->
+      <el-form
+        v-if="resetStep === 1"
+        ref="sendCodeFormRef"
+        :model="resetInfo"
+        label-width="80px"
+        class="reset-form"
+        @submit.prevent="handleSendCode"
+      >
+        <el-form-item label="姓名">
+          <el-input
+            v-model="resetInfo.stu_name"
+            placeholder="请输入您的姓名"
+            clearable
+          />
+        </el-form-item>
+
+        <el-form-item label="邮箱">
+          <el-input
+            v-model="resetInfo.email"
+            placeholder="请输入注册邮箱"
+            clearable
+          />
+        </el-form-item>
+
+        <el-alert
+          v-if="resetError"
+          :title="resetError"
+          type="error"
+          :closable="false"
+          class="reset-error-alert"
+        />
+      </el-form>
+
+      <!-- 步骤二：重置密码 -->
+      <el-form
+        v-if="resetStep === 2"
+        ref="resetPasswordFormRef"
+        :model="resetInfo"
+        label-width="80px"
+        class="reset-form"
+        @submit.prevent="handleResetPassword"
+      >
+        <el-alert
+          title="验证码已发送"
+          :description="`验证码已发送至 ${resetInfo.email}`"
+          type="success"
+          :closable="false"
+          class="reset-success-alert"
+        />
+
+        <el-form-item label="验证码">
+          <el-input
+            v-model="resetInfo.code"
+            placeholder="请输入验证码"
+            clearable
+          />
+        </el-form-item>
+
+        <el-form-item label="新密码">
+          <el-input
+            v-model="resetInfo.password"
+            type="password"
+            placeholder="请输入新密码"
+            show-password
+          />
+        </el-form-item>
+
+        <el-alert
+          v-if="resetError"
+          :title="resetError"
+          type="error"
+          :closable="false"
+          class="reset-error-alert"
+        />
+      </el-form>
+
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="closeForgotPasswordModal">取消</el-button>
+          <el-button
+            v-if="resetStep === 1"
+            type="primary"
+            @click="handleSendCode"
+            :loading="isSendingCode"
+          >
+            发送验证码
+          </el-button>
+          <el-button
+            v-if="resetStep === 2"
+            type="primary"
+            @click="handleResetPassword"
+            :loading="isResettingPassword"
+          >
+            确认重置
+          </el-button>
         </div>
-
-        <!-- 忘记密码链接 (仅学生可见) -->
-        <div class="extra-links">
-          <a v-if="userType === 'student'" @click.prevent="openForgotPasswordModal" href="#">忘记密码?</a>
-        </div>
-
-        <div v-if="error" class="error-message">{{ error }}</div>
-        <button type="submit" class="btn-submit" :disabled="isLoading">
-          {{ isLoading ? '登录中...' : '登录' }}
-        </button>
-      </form>
-    </div>
-
-    <!-- 忘记密码弹窗 -->
-    <div v-if="isForgotPasswordModalVisible" class="modal-overlay" @click.self="closeForgotPasswordModal">
-      <div class="modal-content">
-        <h2 class="form-title">重置学生密码</h2>
-
-        <!-- 步骤一：发送验证码 -->
-        <form v-if="resetStep === 1" @submit.prevent="handleSendCode">
-          <p class="form-description">请输入您的姓名和注册时使用的邮箱以接收验证码。</p>
-          <div class="form-group">
-            <label for="reset-stu-name">姓名</label>
-            <input type="text" id="reset-stu-name" v-model="resetInfo.stu_name" required>
-          </div>
-          <div class="form-group">
-            <label for="reset-email">邮箱</label>
-            <input type="email" id="reset-email" v-model="resetInfo.email" required>
-          </div>
-          <div v-if="resetError" class="error-message">{{ resetError }}</div>
-          <div class="modal-actions">
-            <button type="button" @click="closeForgotPasswordModal" class="btn-secondary">取消</button>
-            <button type="submit" class="btn-submit" :disabled="isSendingCode">
-              {{ isSendingCode ? '发送中...' : '发送验证码' }}
-            </button>
-          </div>
-        </form>
-
-        <!-- 步骤二：重置密码 -->
-        <form v-if="resetStep === 2" @submit.prevent="handleResetPassword">
-          <p class="form-description">验证码已发送至 {{ resetInfo.email }}。请输入验证码和您的新密码。</p>
-          <div class="form-group">
-            <label for="reset-code">验证码</label>
-            <input type="text" id="reset-code" v-model="resetInfo.code" required>
-          </div>
-          <div class="form-group">
-            <label for="reset-password">新密码</label>
-            <input type="password" id="reset-password" v-model="resetInfo.password" required>
-          </div>
-          <div v-if="resetError" class="error-message">{{ resetError }}</div>
-          <div class="modal-actions">
-            <button type="button" @click="closeForgotPasswordModal" class="btn-secondary">取消</button>
-            <button type="submit" class="btn-submit" :disabled="isResettingPassword">
-              {{ isResettingPassword ? '重置中...' : '确认重置' }}
-            </button>
-          </div>
-        </form>
-
-      </div>
-    </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
-import api from '../services/api';
+import { ref, computed, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import api from '../services/api'
 
 // 核心状态
-const userType = ref('admin');
-const credentials = ref({ username: '', password: '' });
-const error = ref(null);
-const notification = ref(null);
-const isLoading = ref(false);
+const userType = ref('admin')
+const credentials = ref({ username: '', password: '' })
+const error = ref(null)
+const notification = ref(null)
+const isLoading = ref(false)
 
 // 忘记密码弹窗状态
-const isForgotPasswordModalVisible = ref(false);
-const resetStep = ref(1); // 1: 发送验证码, 2: 重置密码
-const resetInfo = ref({ stu_name: '', email: '', code: '', password: '' });
-const resetError = ref(null);
-const isSendingCode = ref(false);
-const isResettingPassword = ref(false);
+const isForgotPasswordModalVisible = ref(false)
+const resetStep = ref(1)
+const resetInfo = ref({ stu_name: '', email: '', code: '', password: '' })
+const resetError = ref(null)
+const isSendingCode = ref(false)
+const isResettingPassword = ref(false)
 
-const router = useRouter();
-const route = useRoute();
+const router = useRouter()
+const route = useRoute()
 
-// --- 动态计算属性 ---
-const formTitle = computed(() => {
-  if (userType.value === 'admin') return '管理员登录';
-  if (userType.value === 'teacher') return '教师登录';
-  return '学生登录';
-});
+// 表单引用
+const loginFormRef = ref(null)
+const sendCodeFormRef = ref(null)
+const resetPasswordFormRef = ref(null)
+
+// 用户类型选项
+const userTypeOptions = [
+  { label: '管理员', value: 'admin' },
+  { label: '教师', value: 'teacher' },
+  { label: '学生', value: 'student' }
+]
+
+// 动态计算属性
 const usernameLabel = computed(() => {
-  if (userType.value === 'admin') return '用户名';
-  if (userType.value === 'teacher') return '工号';
-  return '学号';
-});
-const usernameFieldId = computed(() => {
-  if (userType.value === 'admin') return 'admin_username';
-  if (userType.value === 'teacher') return 'teacher_no';
-  return 'stu_no';
-});
+  const labels = {
+    admin: '用户名',
+    teacher: '工号',
+    student: '学号'
+  }
+  return labels[userType.value]
+})
 
-// --- 方法 ---
-const switchUserType = (type) => {
-  userType.value = type;
-  localStorage.setItem('lastLoginType', type);
-  error.value = null;
-  notification.value = null;
-  credentials.value = { username: '', password: '' };
-};
-
+// 登录处理
 const handleLogin = async () => {
-  error.value = null;
-  notification.value = null;
-  isLoading.value = true;
+  // 简单验证
+  if (!credentials.value.username || !credentials.value.password) {
+    error.value = '请输入完整的登录信息'
+    return
+  }
+
+  error.value = null
+  notification.value = null
+  isLoading.value = true
+
   try {
-    let response;
-    let payload = { password: credentials.value.password };
+    let response
+    let payload = { password: credentials.value.password }
 
     if (userType.value === 'admin') {
-      payload.admin_username = credentials.value.username;
-      response = await api.login(payload);
-      localStorage.setItem('accessToken', response.data.access);
-      localStorage.setItem('refreshToken', response.data.refresh);
-      router.push('/dashboard');
+      payload.admin_username = credentials.value.username
+      response = await api.login(payload)
+      localStorage.setItem('accessToken', response.data.access)
+      localStorage.setItem('refreshToken', response.data.refresh)
+      ElMessage.success('登录成功')
+      router.push('/dashboard')
     } else if (userType.value === 'teacher') {
-      payload.teacher_no = credentials.value.username;
-      response = await api.teacherLogin(payload);
-      localStorage.setItem('teacherAccessToken', response.data.access);
-      localStorage.setItem('teacherRefreshToken', response.data.refresh);
-      router.push('/teacher/dashboard');
+      payload.teacher_no = credentials.value.username
+      response = await api.teacherLogin(payload)
+      localStorage.setItem('teacherAccessToken', response.data.access)
+      localStorage.setItem('teacherRefreshToken', response.data.refresh)
+      ElMessage.success('登录成功')
+      router.push('/teacher/dashboard')
     } else {
-      payload.stu_no = credentials.value.username;
-      response = await api.studentLogin(payload);
-      localStorage.setItem('studentAccessToken', response.data.access);
-      localStorage.setItem('studentRefreshToken', response.data.refresh);
-      router.push('/student/dashboard');
+      payload.stu_no = credentials.value.username
+      response = await api.studentLogin(payload)
+      localStorage.setItem('studentAccessToken', response.data.access)
+      localStorage.setItem('studentRefreshToken', response.data.refresh)
+      ElMessage.success('登录成功')
+      router.push('/student/dashboard')
     }
   } catch (err) {
-    error.value = err.response?.data?.detail || '登录失败，请检查您的凭据。';
-    console.error('Login failed:', err);
+    error.value = err.response?.data?.detail || '登录失败，请检查您的凭据'
+    console.error('Login failed:', err)
   } finally {
-    isLoading.value = false;
+    isLoading.value = false
   }
-};
+}
 
-// --- 忘记密码相关方法 ---
+// 打开忘记密码弹窗
 const openForgotPasswordModal = () => {
-  isForgotPasswordModalVisible.value = true;
-  resetStep.value = 1;
-  resetInfo.value = { stu_name: '', email: '', code: '', password: '' };
-  resetError.value = null;
-};
+  isForgotPasswordModalVisible.value = true
+  resetStep.value = 1
+  resetInfo.value = { stu_name: '', email: '', code: '', password: '' }
+  resetError.value = null
+}
 
+// 关闭忘记密码弹窗
 const closeForgotPasswordModal = () => {
-  isForgotPasswordModalVisible.value = false;
-};
+  isForgotPasswordModalVisible.value = false
+  resetError.value = null
+}
 
+// 发送验证码
 const handleSendCode = async () => {
-  resetError.value = null;
-  isSendingCode.value = true;
+  if (!resetInfo.value.stu_name || !resetInfo.value.email) {
+    resetError.value = '请输入姓名和邮箱'
+    return
+  }
+
+  resetError.value = null
+  isSendingCode.value = true
+
   try {
-    // API调用现在放在try块中
-    const response = await api.sendStudentResetCode({
+    await api.sendStudentResetCode({
       stu_name: resetInfo.value.stu_name,
       email: resetInfo.value.email
-    });
+    })
 
-    // 只有当请求成功 (HTTP状态码 2xx) 时，才会执行到这里
-    resetStep.value = 2; // 切换到第二步
+    ElMessage.success('验证码已发送')
+    resetStep.value = 2
 
   } catch (err) {
-    // 如果API返回错误 (HTTP状态码 4xx, 5xx), 会被这里捕获
-    resetError.value = err.response?.data?.error || '发送失败，请检查姓名和邮箱是否正确。';
-    console.error("Send code failed:", err);
+    resetError.value = err.response?.data?.error || '发送失败，请检查姓名和邮箱'
+    console.error('Send code failed:', err)
   } finally {
-    isSendingCode.value = false;
+    isSendingCode.value = false
   }
-};
+}
 
+// 重置密码
 const handleResetPassword = async () => {
-  resetError.value = null;
-  isResettingPassword.value = true;
-  try {
-    const response = await api.resetStudentPasswordByCode(resetInfo.value);
-    closeForgotPasswordModal();
-    notification.value = response.data.message || '密码重置成功！现在您可以使用新密码登录。';
-  } catch (err) {
-    resetError.value = err.response?.data?.error || '重置失败，请检查验证码是否正确。';
-    console.error("Reset password failed:", err);
-  } finally {
-    isResettingPassword.value = false;
+  if (!resetInfo.value.code || !resetInfo.value.password) {
+    resetError.value = '请输入验证码和新密码'
+    return
   }
-};
 
-// --- 组件挂载 ---
+  resetError.value = null
+  isResettingPassword.value = true
+
+  try {
+    await api.resetStudentPasswordByCode(resetInfo.value)
+
+    ElMessage.success('密码重置成功')
+    closeForgotPasswordModal()
+    resetInfo.value = { stu_name: '', email: '', code: '', password: '' }
+
+  } catch (err) {
+    resetError.value = err.response?.data?.error || '重置失败，请检查验证码'
+    console.error('Reset password failed:', err)
+  } finally {
+    isResettingPassword.value = false
+  }
+}
+
+// 组件挂载
 onMounted(() => {
   if (route.query.message === 'unauthorized') {
-    notification.value = '您需要先登录才能访问该页面。';
+    notification.value = '您需要先登录才能访问该页面'
+  } else if (route.query.message === 'session-expired') {
+    notification.value = '登录已过期，请重新登录'
   }
-  const lastType = localStorage.getItem('lastLoginType');
+
+  const lastType = localStorage.getItem('lastLoginType')
   if (lastType && ['admin', 'student', 'teacher'].includes(lastType)) {
-    userType.value = lastType;
+    userType.value = lastType
   }
-});
+})
 </script>
 
 <style scoped>
-.auth-container { display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f0f2f5; }
-.auth-card { width: 380px; padding: 40px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); background: #fff; border-radius: 8px; }
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: #f5f7fa;
+}
 
-.user-type-switcher { display: flex; margin-bottom: 24px; border-radius: 6px; overflow: hidden; border: 1px solid #007bff; }
-.user-type-switcher button { flex: 1; padding: 12px; border: none; background-color: #fff; color: #007bff; font-size: 16px; cursor: pointer; transition: background-color 0.3s, color 0.3s; }
-.user-type-switcher button.active { background-color: #007bff; color: #fff; }
+.login-card {
+  width: 420px;
+  max-width: 90%;
+  padding: 40px;
+  border-radius: 8px;
+}
 
-.form-title { text-align: center; margin-bottom: 24px; color: #333; }
-.form-description { text-align: center; margin-bottom: 20px; color: #666; }
-.form-group { margin-bottom: 16px; }
-label { display: block; margin-bottom: 8px; font-weight: 600; }
-input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-.btn-submit { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; margin-top: 10px; }
-.btn-submit:disabled { background-color: #a0cffc; cursor: not-allowed; }
-.error-message { color: #dc3545; margin-bottom: 15px; text-align: center; }
-.notification-message { color: #007bff; background-color: #e7f3ff; border: 1px solid #b3d7ff; padding: 10px; border-radius: 4px; margin-bottom: 15px; text-align: center; }
-.extra-links { text-align: right; margin-top: -10px; margin-bottom: 15px; }
-.extra-links a { color: #007bff; text-decoration: none; font-size: 0.9em; cursor: pointer; }
+.login-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
 
-/* 弹窗样式 */
-.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; }
-.modal-content { background: white; padding: 30px 40px; border-radius: 8px; width: 90%; max-width: 420px; }
-.modal-actions { display: flex; justify-content: flex-end; gap: 15px; margin-top: 30px; }
-.btn-secondary { padding: 12px 20px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; }
+.system-title {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.user-type-selector {
+  margin-bottom: 24px;
+}
+
+.login-form {
+  margin-top: 24px;
+}
+
+.extra-options {
+  text-align: right;
+  margin-top: -10px;
+  margin-bottom: 16px;
+}
+
+.message-alert {
+  margin-bottom: 16px;
+}
+
+.login-button {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.reset-form {
+  margin-top: 20px;
+}
+
+.reset-success-alert {
+  margin-bottom: 20px;
+}
+
+.reset-error-alert {
+  margin-top: 16px;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .login-card {
+    width: 100%;
+    margin: 16px;
+    padding: 24px;
+  }
+}
 </style>
