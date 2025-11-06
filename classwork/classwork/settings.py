@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -85,8 +86,36 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 SIMPLE_JWT = {
+    # Token有效期
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=10),  # ✅ Access Token 10分钟
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),  # ✅ Refresh Token 7天
+
+    'UPDATE_LAST_LOGIN': False,
+
+    # 算法和密钥
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'VERIFYING_KEY': None,
+    'AUDIENCE': None,
+    'ISSUER': None,
+    'JWK_URL': None,
+    'LEEWAY': 0,
+
+    # HTTP头配置
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
     'USER_ID_FIELD': 'pk',
     'USER_ID_CLAIM': 'user_id',
+
+    # Token类型
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'TOKEN_TYPE_CLAIM': 'token_type',
+    'TOKEN_USER_CLASS': 'rest_framework_simplejwt.models.TokenUser',
+
+    # Sliding Token (可选，不使用的话不影响)
+    'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
+    'SLIDING_TOKEN_LIFETIME': timedelta(minutes=10),
+    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=7),
 }
 
 

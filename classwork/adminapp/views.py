@@ -27,6 +27,10 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from studentapp.models import Student, Major
 from teamapp.models import Group, GroupMembership
 
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from rest_framework_simplejwt.exceptions import TokenError
+
 
 class RegisterView(generics.CreateAPIView):
     """
@@ -65,6 +69,68 @@ class LoginView(APIView):
         else:
             return Response({'detail': '用户名或密码错误。'}, status=status.HTTP_401_UNAUTHORIZED)
 
+
+class AdminProfileView(views.APIView):
+    """
+    管理员查看和更新自己的个人信息
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        """获取当前登录管理员的信息"""
+        admin_user = request.user
+        if not isinstance(admin_user, AdminUser):
+            return Response(
+                {'error': '当前用户不是管理员账号'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        serializer = UserProfileSerializer(admin_user)
+        return Response(serializer.data)
+
+    def put(self, request, *args, **kwargs):
+        """更新当前管理员的信息"""
+        admin_user = request.user
+        if not isinstance(admin_user, AdminUser):
+            return Response(
+                {'error': '当前用户不是管理员账号'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # 只允许更新 admin_name 和密码
+        admin_name = request.data.get('admin_name')
+        old_password = request.data.get('old_password')
+        new_password = request.data.get('new_password')
+
+        if admin_name:
+            # 检查名称是否已被其他管理员使用
+            if AdminUser.objects.filter(admin_name=admin_name).exclude(admin_id=admin_user.admin_id).exists():
+                return Response(
+                    {'error': f'名称 "{admin_name}" 已被使用'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            admin_user.admin_name = admin_name
+
+        # 如果要修改密码，需要验证旧密码
+        if new_password:
+            if not old_password:
+                return Response(
+                    {'error': '修改密码需要提供旧密码'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if not check_password(old_password, admin_user.admin_password):
+                return Response(
+                    {'error': '旧密码不正确'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            admin_user.admin_password = make_password(new_password)
+
+        admin_user.save()
+        return Response(
+            UserProfileSerializer(admin_user).data,
+            status=status.HTTP_200_OK
+        )
 
 class DownloadTemplateView(views.APIView):
     """
@@ -353,12 +419,80 @@ class BulkRegisterStudentsView(views.APIView):
         }, status=status.HTTP_201_CREATED)
 
 
-class AdminUserListView(generics.ListAPIView):
+class AdminUserManagementViewSet(viewsets.ModelViewSet):
     """
-    管理员列表视图，只显示安全的字段
+    管理员管理视图集，支持列表查看、创建、更新、删除和批量删除
     """
     queryset = AdminUser.objects.all().order_by('-admin_id')
     serializer_class = UserProfileSerializer
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['admin_username', 'admin_name']
+
+    def get_serializer_class(self):
+        """根据操作返回不同的序列化器"""
+        if self.action == 'create':
+            return AdminUserSerializer
+        return UserProfileSerializer
+
+    def destroy(self, request, *args, **kwargs):
+        """删除单个管理员"""
+        admin_user = self.get_object()
+
+        # 防止删除自己
+        if admin_user.admin_id == request.user.admin_id:
+            return Response(
+                {'error': '不能删除自己的账号'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 防止删除最后一个管理员
+        if AdminUser.objects.count() <= 1:
+            return Response(
+                {'error': '系统至少需要保留一个管理员账号'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        admin_name = admin_user.admin_name
+        admin_user.delete()
+        return Response(
+            {'message': f'已成功删除管理员 {admin_name}'},
+            status=status.HTTP_200_OK
+        )
+
+    @action(detail=False, methods=['post'], url_path='bulk-delete')
+    @transaction.atomic
+    def bulk_delete(self, request, *args, **kwargs):
+        """批量删除管理员"""
+        admin_ids = request.data.get('ids')
+
+        if not isinstance(admin_ids, list) or not admin_ids:
+            return Response(
+                {'error': '请求体中必须包含一个非空的 "ids" 列表'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 防止删除自己
+        if request.user.admin_id in admin_ids:
+            return Response(
+                {'error': '不能删除自己的账号'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 检查删除后是否还有管理员
+        remaining_count = AdminUser.objects.exclude(admin_id__in=admin_ids).count()
+        if remaining_count < 1:
+            return Response(
+                {'error': '系统至少需要保留一个管理员账号'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        queryset = self.get_queryset().filter(admin_id__in=admin_ids)
+        deleted_count, _ = queryset.delete()
+
+        return Response(
+            {'message': f'成功删除 {deleted_count} 名管理员'},
+            status=status.HTTP_200_OK
+        )
 
 
 class TeacherManagementViewSet(viewsets.ModelViewSet):
@@ -658,3 +792,45 @@ class MutualSelectionEventViewSet(viewsets.ModelViewSet):
             'assigned_groups_count': assigned_groups_count,
             'unassigned_groups_count': total_groups - assigned_groups_count,
         })
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def refresh_admin_token(request):
+    """管理员Token刷新接口"""
+    refresh_token = request.data.get('refresh')
+
+    if not refresh_token:
+        return Response(
+            {'error': '需要提供refresh token'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        refresh = RefreshToken(refresh_token)
+
+        # 验证是否是管理员的token
+        if refresh.get('user_type') != 'admin':
+            return Response(
+                {'error': '用户类型不匹配'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        # ✅ 生成新的access token（不再使用黑名单）
+        new_access_token = str(refresh.access_token)
+
+        return Response({
+            'access': new_access_token,
+            # 注意：不返回新的refresh token，继续使用旧的
+        }, status=status.HTTP_200_OK)
+
+    except TokenError as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+    except Exception as e:
+        return Response(
+            {'error': '刷新token失败'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

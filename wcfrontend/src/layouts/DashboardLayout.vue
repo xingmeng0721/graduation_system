@@ -14,9 +14,14 @@
         router
         class="sidebar-menu"
       >
+        <el-menu-item index="/dashboard/profile">
+          <el-icon><User /></el-icon>
+          <span>个人信息</span>
+        </el-menu-item>
+         <el-divider style="margin: 12px 0;" />
         <el-menu-item index="/dashboard/users">
           <el-icon><User /></el-icon>
-          <template #title>管理员数据</template>
+          <template #title>管理员列表</template>
         </el-menu-item>
 
         <el-menu-item index="/dashboard/register">

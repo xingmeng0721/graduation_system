@@ -1,77 +1,121 @@
 <template>
   <div class="page-container">
     <div class="page-header">
-      <h2>管理员数据</h2>
+      <h2>管理员列表</h2>
+      <div class="header-actions">
+        <el-button
+          type="danger"
+          :disabled="selectedUsers.length === 0"
+          @click="handleBulkDelete"
+        >
+          批量删除 ({{ selectedUsers.length }})
+        </el-button>
+      </div>
     </div>
 
-    <el-card class="table-card" shadow="never">
-      <!-- 加载状态 -->
-      <div v-if="loading" class="loading-container">
-        <el-icon class="is-loading" :size="40">
-          <Loading />
-        </el-icon>
-        <p>正在加载...</p>
-      </div>
-
-      <!-- 错误提示 -->
-      <el-alert
-        v-if="error"
-        :title="error"
-        type="error"
-        :closable="false"
-        show-icon
-      />
-
-      <!-- 数据表格 -->
-      <el-table
-        v-if="!loading && !error"
-        :data="users"
-        stripe
-        style="width: 100%"
-        :header-cell-style="{ background: '#f5f7fa' }"
-      >
-        <el-table-column prop="admin_id" label="ID" width="80" />
-        <el-table-column prop="admin_name" label="名称" min-width="150" />
-        <el-table-column prop="admin_username" label="用户名" min-width="150" />
-      </el-table>
-
-      <!-- 空状态 -->
-      <el-empty
-        v-if="!loading && !error && users.length === 0"
-        description="暂无管理员数据"
-      />
-    </el-card>
+    <el-table
+      :data="users"
+      @selection-change="handleSelectionChange"
+      v-loading="loading"
+    >
+      <el-table-column type="selection" width="55" />
+      <el-table-column prop="admin_username" label="用户名" />
+      <el-table-column prop="admin_name" label="姓名" />
+      <el-table-column label="操作" width="150">
+        <template #default="{ row }">
+          <el-button
+            type="danger"
+            size="small"
+            link
+            @click="handleDelete(row)"
+          >
+            删除
+          </el-button>
+        </template>
+      </el-table-column>
+    </el-table>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { Loading } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import api from '../services/api'
 
 const users = ref([])
-const loading = ref(true)
-const error = ref(null)
+const selectedUsers = ref([])
+const loading = ref(false)
 
-onMounted(async () => {
+const fetchUsers = async () => {
+  loading.value = true
   try {
-    const response = await api.getUsers()
+    const response = await api.getUsers()  // ✅ 修改这里
     users.value = response.data
-  } catch (err) {
-    error.value = '无法加载用户数据，请稍后重试'
-    console.error(err)
+  } catch (error) {
+    ElMessage.error('获取管理员列表失败')
+    console.error(error)
   } finally {
     loading.value = false
   }
-})
+}
+
+const handleSelectionChange = (selection) => {
+  selectedUsers.value = selection
+}
+
+const handleDelete = async (user) => {
+  try {
+    await ElMessageBox.confirm(`确定要删除管理员 "${user.admin_name}" 吗？`, '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+
+    await api.deleteAdminUser(user.admin_id)
+    ElMessage.success('删除成功')
+    await fetchUsers()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.response?.data?.error || '删除失败')
+    }
+  }
+}
+
+const handleBulkDelete = async () => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除选中的 ${selectedUsers.value.length} 名管理员吗？`,
+      '批量删除确认',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+
+    const ids = selectedUsers.value.map(user => user.admin_id)
+    await api.bulkDeleteAdminUsers(ids)
+    ElMessage.success(`成功删除 ${selectedUsers.value.length} 名管理员`)
+    await fetchUsers()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.response?.data?.error || '批量删除失败')
+    }
+  }
+}
+
+onMounted(fetchUsers)
 </script>
 
 <style scoped>
 .page-container {
-  max-width: 1200px;
+  padding: 20px;
 }
 
 .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 20px;
 }
 
@@ -82,21 +126,8 @@ onMounted(async () => {
   color: #303133;
 }
 
-.table-card {
-  border-radius: 8px;
-}
-
-.loading-container {
+.header-actions {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 0;
-  color: #909399;
-}
-
-.loading-container p {
-  margin-top: 16px;
-  font-size: 14px;
+  gap: 12px;
 }
 </style>
