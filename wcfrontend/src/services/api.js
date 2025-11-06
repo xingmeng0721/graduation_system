@@ -197,4 +197,30 @@ export default {
     // 注意：这里的 URL 是 /teams/{eventId}/teacher/history-detail/
     return apiClient.get(`${TEAM_BASE}${eventId}/teacher/history-detail/`);
   },
+  getMatchOptions(eventId, groupId) {
+    return apiClient.get(`${TEAM_BASE}${eventId}/admin/match-options/`, {
+      params: { group_id: groupId }
+    });
+  },
+  getAllMatchOptions(eventId) {
+    return apiClient.get(`${TEAM_BASE}${eventId}/admin/all-match-options/`);
+  },
+  getGroupDetail(groupId) {
+    return apiClient.get(`${TEAM_BASE}${groupId}/group-detail/`);
+  },
+
+
+  teacherGetGroupDetail(groupId) {
+    return apiClient.get(`${TEAM_BASE}${groupId}/teacher/group-detail/`);
+  },
+
+
+  getMyAdvisedGroups() {
+    return apiClient.get(`${TEAM_BASE}teacher/my-advised-groups/`);
+  },
+
+
+  getCurrentAdvisedGroups() {
+    return apiClient.get(`${TEAM_BASE}teacher/current-advised-groups/`);
+  },
 };

@@ -7,15 +7,24 @@ from adminapp.models import MutualSelectionEvent
 
 # --- 用于嵌套显示的简化序列化器 ---
 
+
+
 class TeamMemberSerializer(serializers.ModelSerializer):
     """用于显示团队成员信息的简化序列化器"""
     is_captain = serializers.SerializerMethodField()
+    major_name = serializers.CharField(source='major.major_name', read_only=True)
 
     class Meta:
         model = Student
-        fields = ['stu_id', 'stu_no', 'stu_name', 'is_captain']
+        fields = [
+            'stu_id', 'stu_no', 'stu_name', 'grade',
+            'major_name', 'phone', 'email', 'is_captain'
+        ]
 
     def get_is_captain(self, obj):
+        group = self.context.get('group')
+        if group:
+            return group.captain_id == obj.stu_id
         return hasattr(obj, 'led_group') and obj.led_group is not None
 
 
@@ -26,15 +35,14 @@ class TeamAdvisorSerializer(serializers.ModelSerializer):
         model = teacher
         fields = [
             'teacher_id',
+            'teacher_no',
             'teacher_name',
+            'phone',
             'email',
             'research_direction',
             'introduction',
-            'phone',
         ]
 
-
-# --- 新增：用于显示可组队队友的序列化器 ---
 
 class AvailableTeammateSerializer(serializers.ModelSerializer):
     """用于显示当前活动中、尚未组队的学生列表"""
@@ -50,25 +58,44 @@ class AvailableTeammateSerializer(serializers.ModelSerializer):
 class GroupDetailSerializer(serializers.ModelSerializer):
     """用于显示团队完整信息的序列化器"""
     captain = TeamMemberSerializer(read_only=True)
-    members = TeamMemberSerializer(many=True, read_only=True)
+    members = serializers.SerializerMethodField()
     advisor = TeamAdvisorSerializer(read_only=True)
     preferred_advisor_1 = TeamAdvisorSerializer(read_only=True)
     preferred_advisor_2 = TeamAdvisorSerializer(read_only=True)
     preferred_advisor_3 = TeamAdvisorSerializer(read_only=True)
     event_name = serializers.CharField(source='event.event_name', read_only=True)
+    event_id = serializers.IntegerField(source='event.event_id', read_only=True)
     member_count = serializers.SerializerMethodField()
+
+    # ✅ 新增：项目简介截取版本
+    project_description_short = serializers.SerializerMethodField()
 
     class Meta:
         model = Group
         fields = [
             'group_id', 'group_name', 'project_title', 'project_description',
-            'event_name', 'captain', 'members', 'member_count',
+            'project_description_short',  # ✅ 新增
+            'event_id', 'event_name', 'captain', 'members', 'member_count',
             'advisor', 'preferred_advisor_1', 'preferred_advisor_2', 'preferred_advisor_3'
         ]
+
+    def get_members(self, obj):
+        members = obj.members.select_related('major').all()
+        # 传递团队信息到上下文，用于判断队长
+        return TeamMemberSerializer(
+            members,
+            many=True,
+            context={'group': obj}
+        ).data
 
     def get_member_count(self, obj):
         return obj.members.count()
 
+    def get_project_description_short(self, obj):
+        if obj.project_description:
+            desc = obj.project_description
+            return desc[:100] + ('...' if len(desc) > 100 else '')
+        return ''
 
 class GroupCreateUpdateSerializer(serializers.ModelSerializer):
     """用于创建和更新团队的序列化器，包含完整的验证逻辑"""
@@ -157,15 +184,76 @@ class TeacherPreferenceSerializer(serializers.Serializer):
 
 
 
-
 class ProvisionalAssignmentSerializer(serializers.ModelSerializer):
+    """
+    临时分配序列化器
+    """
     group = GroupDetailSerializer(read_only=True)
     teacher = TeamAdvisorSerializer(read_only=True)
     event_id = serializers.IntegerField(source='event.event_id', read_only=True)
 
     class Meta:
-        model = ProvisionalAssignment # 确保你已经从 .models 导入了 ProvisionalAssignment
+        model = ProvisionalAssignment
         fields = [
-            'id', 'event_id', 'group', 'teacher',
-            'assignment_type', 'score', 'explanation'
+            'id',  # ✅ 使用 Django 默认的 'id' 字段
+            'event_id',
+            'group',
+            'teacher',
+            'assignment_type',
+            'score',
+            'explanation'
         ]
+
+
+class GroupListSerializer(serializers.ModelSerializer):
+    """
+    ✅ 新增：团队列表序列化器
+    用于列表显示，只包含关键信息，提高性能
+    """
+    captain_name = serializers.CharField(source='captain.stu_name', read_only=True)
+    advisor_name = serializers.CharField(source='advisor.teacher_name', read_only=True)
+    event_name = serializers.CharField(source='event.event_name', read_only=True)
+    member_count = serializers.IntegerField(source='members.count', read_only=True)
+    project_description_short = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Group
+        fields = [
+            'group_id', 'group_name', 'project_title',
+            'project_description_short',
+            'event_name', 'captain_name', 'advisor_name', 'member_count'
+        ]
+
+    def get_project_description_short(self, obj):
+        """项目简介截取"""
+        if obj.project_description:
+            desc = obj.project_description
+            return desc[:50] + ('...' if len(desc) > 50 else '')
+        return ''
+
+
+
+
+class AdvisedGroupSummarySerializer(serializers.ModelSerializer):
+    """
+    教师查看自己指导团队的摘要信息
+    """
+    captain = TeamMemberSerializer(read_only=True)
+    member_count = serializers.IntegerField(source='members.count', read_only=True)
+    event_name = serializers.CharField(source='event.event_name', read_only=True)
+    event_id = serializers.IntegerField(source='event.event_id', read_only=True)
+    project_description_short = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Group
+        fields = [
+            'group_id', 'group_name', 'project_title',
+            'project_description_short',
+            'event_id', 'event_name', 'captain', 'member_count'
+        ]
+
+    def get_project_description_short(self, obj):
+        if obj.project_description:
+            desc = obj.project_description
+            return desc[:100] + ('...' if len(desc) > 100 else '')
+        return ''

@@ -16,8 +16,12 @@ from .serializers import (
     AvailableTeammateSerializer,
     TeacherPreferenceSerializer,
     ProvisionalAssignmentSerializer,
+
 )
 from adminapp.models import AdminUser
+
+import random
+from collections import defaultdict
 
 
 def is_admin(user):
@@ -521,6 +525,49 @@ class TeamViewSet(viewsets.GenericViewSet):
             status=status.HTTP_200_OK
         )
 
+    @action(detail=True, methods=['get'], url_path='group-detail')
+    def get_group_detail(self, request, pk=None):
+        """
+        获取团队的完整详细信息
+        学生可以查看任何团队的详细信息（包括成员联系方式）
+        """
+        student = request.user
+        if not isinstance(student, Student):
+            return Response(
+                {'error': '当前用户不是学生账号'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        try:
+            group = Group.objects.prefetch_related(
+                'members__major',
+                'captain',
+                'advisor',
+                'preferred_advisor_1',
+                'preferred_advisor_2',
+                'preferred_advisor_3'
+            ).get(pk=pk)
+        except Group.DoesNotExist:
+            return Response(
+                {'error': '团队不存在'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # 检查学生是否有权查看（参与了该活动）
+        active_event = self.get_active_event_for_student(student)
+        if active_event and group.event == active_event:
+            # 当前活动中的团队，可以查看
+            return Response(GroupDetailSerializer(group).data)
+
+        # 检查是否是历史活动中的团队
+        if group.event.students.filter(pk=student.pk).exists():
+            return Response(GroupDetailSerializer(group).data)
+
+        return Response(
+            {'error': '您没有权限查看该团队信息'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
     # --- 教师端 API ---
 
     @action(detail=False, methods=['get'], url_path='teacher/dashboard')
@@ -683,6 +730,73 @@ class TeamViewSet(viewsets.GenericViewSet):
         }
         return Response(response_data)
 
+    @action(detail=True, methods=['get'], url_path='teacher/group-detail')
+    def teacher_get_group_detail(self, request, pk=None):
+        """
+        教师查看团队的完整详细信息
+        包括所有成员的联系方式和详细信息
+        """
+        current_teacher = request.user
+        if not isinstance(current_teacher, teacher):
+            return Response(
+                {'error': '当前用户不是教师账号'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        try:
+            group = Group.objects.prefetch_related(
+                'members__major',
+                'captain',
+                'advisor'
+            ).get(pk=pk)
+        except Group.DoesNotExist:
+            return Response(
+                {'error': '团队不存在'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # 检查教师是否有权查看（参与了该活动）
+        if not group.event.teachers.filter(teacher_id=current_teacher.teacher_id).exists():
+            return Response(
+                {'error': '您没有权限查看该团队信息'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        return Response(GroupDetailSerializer(group).data)
+
+    @action(detail=False, methods=['get'], url_path='teacher/current-advised-groups')
+    def get_current_advised_groups(self, request):
+        """
+       获取教师在当前活动中指导的团队
+        """
+        current_teacher = request.user
+        if not isinstance(current_teacher, teacher):
+            return Response(
+                {'error': '当前用户不是教师账号'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        active_event = self.get_active_event_for_teacher(current_teacher)
+        if not active_event:
+            return Response({
+                'message': '当前没有正在进行的活动',
+                'groups': []
+            })
+
+        # 获取当前活动中指导的团队
+        advised_groups = Group.objects.filter(
+            event=active_event,
+            advisor=current_teacher
+        ).prefetch_related(
+            'members__major',
+            'captain'
+        )
+
+        return Response({
+            'event_id': active_event.event_id,
+            'event_name': active_event.event_name,
+            'groups': GroupDetailSerializer(advised_groups, many=True).data})
+
     # --- 管理员端 API ---
 
     @action(detail=True, methods=['post'], url_path='admin/auto-assign')
@@ -703,10 +817,19 @@ class TeamViewSet(viewsets.GenericViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # 清除旧的临时分配
         ProvisionalAssignment.objects.filter(event=event).delete()
 
         groups = list(Group.objects.filter(event=event))
         teachers = list(event.teachers.all())
+
+        if not groups:
+            return Response({'error': '当前活动没有任何团队'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not teachers:
+            return Response({'error': '当前活动没有参与的教师'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 构建学生志愿字典
         student_prefs = {
             g.group_id: [
                 g.preferred_advisor_1_id,
@@ -715,56 +838,71 @@ class TeamViewSet(viewsets.GenericViewSet):
             ]
             for g in groups
         }
+
+        # 构建教师志愿字典
         teacher_prefs = {
-            p.teacher_id: {
+            t.teacher_id: {
                 pref.group_id: pref.preference_rank
-                for pref in p.group_preferences.filter(group__event=event)
+                for pref in t.group_preferences.filter(group__event=event)
             }
-            for p in teachers
+            for t in teachers
         }
 
+        # 教师剩余容量
         teacher_capacity = {t.teacher_id: event.teacher_choice_limit for t in teachers}
 
-        scores = []
-        TEACHER_WEIGHT_MULTIPLIER = 1.1
+        # 权重和评分规则
+        TEACHER_WEIGHT_MULTIPLIER = 1.2  # 教师志愿权重稍高
         TEACHER_PREF_SCORES = {1: 10, 2: 8, 3: 6, 4: 4, 5: 2}
         STUDENT_PREF_SCORES = {1: 10, 2: 5, 3: 2}
 
+        # ========== 第一阶段：基于双向志愿的优先匹配 ==========
+        scores = []
         for group in groups:
             for t in teachers:
                 teacher_score = 0
                 student_score = 0
                 explanation_parts = []
 
+                # 计算教师志愿得分
                 teacher_rank = teacher_prefs.get(t.teacher_id, {}).get(group.group_id)
                 if teacher_rank:
                     teacher_score = TEACHER_PREF_SCORES.get(teacher_rank, 0)
                     if teacher_score > 0:
-                        explanation_parts.append(f"师:{teacher_rank}志愿")
+                        explanation_parts.append(f"教师第{teacher_rank}志愿")
 
+                # 计算学生志愿得分
                 try:
                     student_rank = student_prefs[group.group_id].index(t.teacher_id) + 1
                     student_score = STUDENT_PREF_SCORES.get(student_rank, 0)
                     if student_score > 0:
-                        explanation_parts.append(f"生:{student_rank}志愿")
+                        explanation_parts.append(f"学生第{student_rank}志愿")
                 except (ValueError, IndexError):
                     pass
 
+                # 计算总分
                 total_score = (teacher_score * TEACHER_WEIGHT_MULTIPLIER) + student_score
 
-                if total_score > 0:
-                    scores.append({
-                        'group': group,
-                        'teacher': t,
-                        'score': round(total_score, 2),
-                        'explanation': " + ".join(explanation_parts) or "N/A"
-                    })
+                # 即使总分为0也要记录，用于后续随机分配
+                scores.append({
+                    'group': group,
+                    'teacher': t,
+                    'score': round(total_score, 2),
+                    'explanation': " + ".join(explanation_parts) if explanation_parts else "无志愿匹配",
+                    'has_preference': total_score > 0
+                })
 
-        scores.sort(key=lambda x: x['score'], reverse=True)
+        # 按得分降序排序
+        scores.sort(key=lambda x: (x['has_preference'], x['score']), reverse=True)
 
         assigned_groups = set()
         provisional_assignments = []
+
+        # ========== 第二阶段：优先匹配有志愿的组合 ==========
         for match in scores:
+            if not match['has_preference']:
+                break  # 已经到无志愿匹配的部分了
+
             group, teacher_obj = match['group'], match['teacher']
             if group.group_id in assigned_groups or teacher_capacity[teacher_obj.teacher_id] <= 0:
                 continue
@@ -782,12 +920,307 @@ class TeamViewSet(viewsets.GenericViewSet):
             assigned_groups.add(group.group_id)
             teacher_capacity[teacher_obj.teacher_id] -= 1
 
+        # ========== 第三阶段：随机分配剩余团队 ==========
+        unassigned_groups = [g for g in groups if g.group_id not in assigned_groups]
+        available_teachers_list = [t for t in teachers if teacher_capacity[t.teacher_id] > 0]
+
+        if unassigned_groups and available_teachers_list:
+            # 打乱教师顺序，实现随机性
+            random.shuffle(available_teachers_list)
+
+            for group in unassigned_groups:
+                # 找到还有容量的教师
+                assigned = False
+                for t in available_teachers_list:
+                    if teacher_capacity[t.teacher_id] > 0:
+                        provisional_assignments.append(
+                            ProvisionalAssignment(
+                                event=event,
+                                group=group,
+                                teacher=t,
+                                assignment_type='auto',
+                                score=0.0,
+                                explanation='随机分配（无志愿匹配）'
+                            )
+                        )
+                        assigned_groups.add(group.group_id)
+                        teacher_capacity[t.teacher_id] -= 1
+                        assigned = True
+                        break
+
+                # 如果所有教师都满额，但还有未分配的团队，需要扩容
+                if not assigned:
+                    # 找到当前指导团队最少的教师
+                    min_assigned_teacher = min(teachers,
+                                               key=lambda t: event.teacher_choice_limit - teacher_capacity[
+                                                   t.teacher_id])
+
+                    provisional_assignments.append(
+                        ProvisionalAssignment(
+                            event=event,
+                            group=group,
+                            teacher=min_assigned_teacher,
+                            assignment_type='auto',
+                            score=0.0,
+                            explanation=f'超额分配（原名额已满）'
+                        )
+                    )
+                    assigned_groups.add(group.group_id)
+                    # 注意：这里不再减少容量，因为已经超额了
+
+        # 批量创建分配记录
         ProvisionalAssignment.objects.bulk_create(provisional_assignments)
 
+        # 统计信息
+        preference_matched = sum(1 for pa in provisional_assignments if pa.score > 0)
+        random_assigned = sum(1 for pa in provisional_assignments if pa.score == 0)
+        over_capacity_teachers = [
+            t.teacher_name for t in teachers
+            if teacher_capacity[t.teacher_id] < 0
+        ]
+
         return Response({
-            'message': f'自动分配完成！成功为 {len(provisional_assignments)} 个小组找到导师。',
+            'message': '自动分配完成！',
+            'total_groups': len(groups),
+            'total_teachers': len(teachers),
             'assigned_count': len(provisional_assignments),
-            'unassigned_count': len(groups) - len(provisional_assignments)
+            'preference_matched': preference_matched,
+            'random_assigned': random_assigned,
+            'unassigned_count': len(groups) - len(provisional_assignments),
+            'over_capacity_teachers': over_capacity_teachers,
+            'details': f'志愿匹配: {preference_matched}组，随机分配: {random_assigned}组'
+        })
+
+    @action(detail=True, methods=['get'], url_path='admin/match-options')
+    def get_match_options(self, request, pk=None):
+        """
+        ✅ 新增：获取指定团队的所有可能教师匹配选项及得分
+        用于管理员手动分配时参考
+        """
+        if not is_admin(request.user):
+            return Response({'error': '无权访问'}, status=status.HTTP_403_FORBIDDEN)
+
+        group_id = request.query_params.get('group_id')
+        if not group_id:
+            return Response({'error': '缺少 group_id 参数'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            group = Group.objects.get(pk=group_id, event_id=pk)
+            event = MutualSelectionEvent.objects.get(pk=pk)
+        except (Group.DoesNotExist, MutualSelectionEvent.DoesNotExist):
+            return Response({'error': '团队或活动不存在'}, status=status.HTTP_404_NOT_FOUND)
+
+        # 获取团队的学生志愿
+        student_prefs = [
+            group.preferred_advisor_1_id,
+            group.preferred_advisor_2_id,
+            group.preferred_advisor_3_id
+        ]
+
+        # 获取所有参与教师
+        teachers = event.teachers.all()
+
+        # 计算当前每个教师已分配的团队数
+        teacher_assignments = defaultdict(int)
+        for assignment in ProvisionalAssignment.objects.filter(event=event):
+            teacher_assignments[assignment.teacher_id] += 1
+
+        # 评分规则
+        TEACHER_WEIGHT_MULTIPLIER = 1.2
+        TEACHER_PREF_SCORES = {1: 10, 2: 8, 3: 6, 4: 4, 5: 2}
+        STUDENT_PREF_SCORES = {1: 10, 2: 5, 3: 2}
+
+        match_options = []
+        for t in teachers:
+            teacher_score = 0
+            student_score = 0
+            details = []
+
+            # 计算教师志愿得分
+            teacher_pref = TeacherGroupPreference.objects.filter(
+                teacher=t,
+                group=group
+            ).first()
+
+            if teacher_pref:
+                teacher_score = TEACHER_PREF_SCORES.get(teacher_pref.preference_rank, 0)
+                if teacher_score > 0:
+                    details.append({
+                        'type': 'teacher_preference',
+                        'rank': teacher_pref.preference_rank,
+                        'score': teacher_score * TEACHER_WEIGHT_MULTIPLIER,
+                        'description': f'教师第{teacher_pref.preference_rank}志愿'
+                    })
+
+            # 计算学生志愿得分
+            try:
+                student_rank = student_prefs.index(t.teacher_id) + 1
+                student_score = STUDENT_PREF_SCORES.get(student_rank, 0)
+                if student_score > 0:
+                    details.append({
+                        'type': 'student_preference',
+                        'rank': student_rank,
+                        'score': student_score,
+                        'description': f'学生第{student_rank}志愿'
+                    })
+            except (ValueError, IndexError):
+                pass
+
+            # 计算总分
+            total_score = (teacher_score * TEACHER_WEIGHT_MULTIPLIER) + student_score
+
+            # 判断是否超额
+            current_load = teacher_assignments[t.teacher_id]
+            is_over_capacity = current_load >= event.teacher_choice_limit
+
+            match_options.append({
+                'teacher_id': t.teacher_id,
+                'teacher_name': t.teacher_name,
+                'teacher_no': t.teacher_no,
+                'research_direction': t.research_direction,
+                'total_score': round(total_score, 2),
+                'score_details': details,
+                'current_load': current_load,
+                'capacity_limit': event.teacher_choice_limit,
+                'is_over_capacity': is_over_capacity,
+                'load_percentage': round((current_load / event.teacher_choice_limit) * 100,
+                                         1) if event.teacher_choice_limit > 0 else 0,
+                'recommendation': self._get_recommendation(total_score, is_over_capacity)
+            })
+
+        # 按总分降序排序
+        match_options.sort(key=lambda x: x['total_score'], reverse=True)
+
+        return Response({
+            'group_id': group.group_id,
+            'group_name': group.group_name,
+            'match_options': match_options
+        })
+
+    def _get_recommendation(self, score, is_over_capacity):
+        """生成推荐等级"""
+        if is_over_capacity:
+            return '⚠️ 超额'
+        elif score >= 15:
+            return '🌟 强烈推荐'
+        elif score >= 10:
+            return '👍 推荐'
+        elif score >= 5:
+            return '✓ 可选'
+        elif score > 0:
+            return '- 一般'
+        else:
+            return '❌ 无匹配'
+
+    @action(detail=True, methods=['get'], url_path='admin/all-match-options')
+    def get_all_match_options(self, request, pk=None):
+        """
+        ✅ 新增：获取活动中所有团队和教师的匹配矩阵
+        用于管理员全局查看匹配情况
+        """
+        if not is_admin(request.user):
+            return Response({'error': '无权访问'}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            event = MutualSelectionEvent.objects.get(pk=pk)
+        except MutualSelectionEvent.DoesNotExist:
+            return Response({'error': '活动不存在'}, status=status.HTTP_404_NOT_FOUND)
+
+        groups = Group.objects.filter(event=event)
+        teachers = event.teachers.all()
+
+        # 构建学生志愿字典
+        student_prefs = {
+            g.group_id: [
+                g.preferred_advisor_1_id,
+                g.preferred_advisor_2_id,
+                g.preferred_advisor_3_id
+            ]
+            for g in groups
+        }
+
+        # 构建教师志愿字典
+        teacher_prefs_map = {}
+        for pref in TeacherGroupPreference.objects.filter(group__event=event):
+            key = (pref.teacher_id, pref.group_id)
+            teacher_prefs_map[key] = pref.preference_rank
+
+        # 计算教师当前负载
+        teacher_assignments = defaultdict(int)
+        for assignment in ProvisionalAssignment.objects.filter(event=event):
+            teacher_assignments[assignment.teacher_id] += 1
+
+        # 评分规则
+        TEACHER_WEIGHT_MULTIPLIER = 1.2
+        TEACHER_PREF_SCORES = {1: 10, 2: 8, 3: 6, 4: 4, 5: 2}
+        STUDENT_PREF_SCORES = {1: 10, 2: 5, 3: 2}
+
+        # 构建匹配矩阵
+        match_matrix = []
+        for group in groups:
+            group_matches = {
+                'group_id': group.group_id,
+                'group_name': group.group_name,
+                'captain_name': group.captain.stu_name if group.captain else '无',
+                'member_count': group.members.count(),
+                'teachers': []
+            }
+
+            for t in teachers:
+                teacher_score = 0
+                student_score = 0
+
+                # 教师志愿得分
+                teacher_rank = teacher_prefs_map.get((t.teacher_id, group.group_id))
+                if teacher_rank:
+                    teacher_score = TEACHER_PREF_SCORES.get(teacher_rank, 0) * TEACHER_WEIGHT_MULTIPLIER
+
+                # 学生志愿得分
+                try:
+                    student_rank = student_prefs[group.group_id].index(t.teacher_id) + 1
+                    student_score = STUDENT_PREF_SCORES.get(student_rank, 0)
+                except (ValueError, IndexError):
+                    pass
+
+                total_score = teacher_score + student_score
+                current_load = teacher_assignments[t.teacher_id]
+                is_over_capacity = current_load >= event.teacher_choice_limit
+
+                group_matches['teachers'].append({
+                    'teacher_id': t.teacher_id,
+                    'teacher_name': t.teacher_name,
+                    'score': round(total_score, 2),
+                    'teacher_rank': teacher_rank,
+                    'student_rank': student_prefs[group.group_id].index(t.teacher_id) + 1 if t.teacher_id in
+                                                                                             student_prefs[
+                                                                                                 group.group_id] else None,
+                    'current_load': current_load,
+                    'is_over_capacity': is_over_capacity
+                })
+
+            # 按得分排序
+            group_matches['teachers'].sort(key=lambda x: x['score'], reverse=True)
+            match_matrix.append(group_matches)
+
+        # 教师统计
+        teacher_stats = []
+        for t in teachers:
+            assigned_count = teacher_assignments[t.teacher_id]
+            teacher_stats.append({
+                'teacher_id': t.teacher_id,
+                'teacher_name': t.teacher_name,
+                'assigned_count': assigned_count,
+                'capacity_limit': event.teacher_choice_limit,
+                'remaining_capacity': max(0, event.teacher_choice_limit - assigned_count),
+                'is_over_capacity': assigned_count > event.teacher_choice_limit
+            })
+
+        return Response({
+            'event_name': event.event_name,
+            'total_groups': groups.count(),
+            'total_teachers': teachers.count(),
+            'match_matrix': match_matrix,
+            'teacher_stats': teacher_stats
         })
 
     @action(detail=True, methods=['get'], url_path='admin/get-assignments')

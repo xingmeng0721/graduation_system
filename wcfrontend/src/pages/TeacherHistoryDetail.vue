@@ -34,7 +34,18 @@
             shadow="hover"
           >
             <template #header>
-              <h4>{{ group.group_name }}</h4>
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h4>{{ group.group_name }}</h4>
+                <!-- ✅ 查看完整信息按钮 -->
+                <el-button
+                  type="primary"
+                  link
+                  size="small"
+                  @click="viewTeamDetail(group.group_id)"
+                >
+                  查看完整信息
+                </el-button>
+              </div>
             </template>
 
             <div class="team-section">
@@ -44,30 +55,38 @@
                   {{ group.project_title || '未填写' }}
                 </el-descriptions-item>
                 <el-descriptions-item label="项目简介">
-                  {{ group.project_description || '未填写' }}
+                  <div style="max-height: 100px; overflow-y: auto;">
+                    {{ group.project_description_short || group.project_description || '未填写' }}
+                  </div>
                 </el-descriptions-item>
               </el-descriptions>
             </div>
 
             <el-divider />
 
+            <!-- 使用表格显示成员信息 -->
             <div class="team-section">
-              <h5>小组成员 ({{ group.member_count }})</h5>
-              <div class="members-list">
-                <div
-                  v-for="member in group.members"
-                  :key="member.stu_id"
-                  class="member-item"
-                >
-                  <div class="member-info">
-                    <span class="member-name">{{ member.stu_name }}</span>
-                    <span class="member-no">{{ member.stu_no }}</span>
-                  </div>
-                  <el-tag v-if="member.is_captain" type="warning" size="small">
-                    队长
-                  </el-tag>
-                </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h5 style="margin: 0;">小组成员 ({{ group.member_count }}人)</h5>
               </div>
+              <el-table
+                :data="group.members"
+                border
+                stripe
+                size="small"
+              >
+                <el-table-column label="姓名" width="100">
+                  <template #default="{ row }">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      {{ row.stu_name }}
+                      <el-tag v-if="row.is_captain" type="warning" size="small">队长</el-tag>
+                    </div>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="stu_no" label="学号" width="120" />
+                <el-table-column prop="grade" label="年级" width="80" />
+                <el-table-column prop="major_name" label="专业" min-width="120" />
+              </el-table>
             </div>
           </el-card>
         </div>
@@ -97,6 +116,12 @@
         <el-empty v-else description="您在该活动中未提交任何志愿" :image-size="60" />
       </el-card>
     </div>
+
+    <!-- ✅ 团队详情对话框 -->
+    <TeacherTeamDetailDialog
+      v-model="showTeamDetail"
+      :group-id="currentTeamId"
+    />
   </div>
 </template>
 
@@ -105,11 +130,22 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { Loading } from '@element-plus/icons-vue'
 import api from '../services/api'
+import TeacherTeamDetailDialog from '../components/TeacherTeamDetailDialog.vue'
 
 const route = useRoute()
 const isLoading = ref(true)
 const error = ref(null)
 const resultData = ref(null)
+
+// 团队详情弹窗状态
+const showTeamDetail = ref(false)
+const currentTeamId = ref(null)
+
+// 查看团队详情方法
+const viewTeamDetail = (groupId) => {
+  currentTeamId.value = groupId
+  showTeamDetail.value = true
+}
 
 onMounted(async () => {
   const eventId = route.params.id
@@ -220,38 +256,6 @@ const getGroupName = (groupId) => {
   font-size: 14px;
   font-weight: 600;
   color: #606266;
-}
-
-.members-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.member-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px;
-  background-color: #f5f7fa;
-  border-radius: 4px;
-}
-
-.member-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.member-name {
-  font-size: 14px;
-  font-weight: 500;
-  color: #303133;
-}
-
-.member-no {
-  font-size: 12px;
-  color: #909399;
 }
 
 .preference-card {

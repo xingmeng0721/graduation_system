@@ -6,14 +6,17 @@
         <h2 class="system-title">师生双选系统</h2>
       </div>
 
-      <!-- 用户类型切换 -->
-      <el-segmented
+      <!-- 用户类型切换 - 使用 el-radio-group 替代 el-segmented -->
+      <el-radio-group
         v-model="userType"
-        :options="userTypeOptions"
         size="large"
-        block
         class="user-type-selector"
-      />
+        @change="handleUserTypeChange"
+      >
+        <el-radio-button value="admin">管理员</el-radio-button>
+        <el-radio-button value="teacher">教师</el-radio-button>
+        <el-radio-button value="student">学生</el-radio-button>
+      </el-radio-group>
 
       <!-- 消息提示 -->
       <el-alert
@@ -192,7 +195,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import api from '../services/api'
@@ -220,13 +223,6 @@ const loginFormRef = ref(null)
 const sendCodeFormRef = ref(null)
 const resetPasswordFormRef = ref(null)
 
-// 用户类型选项
-const userTypeOptions = [
-  { label: '管理员', value: 'admin' },
-  { label: '教师', value: 'teacher' },
-  { label: '学生', value: 'student' }
-]
-
 // 动态计算属性
 const usernameLabel = computed(() => {
   const labels = {
@@ -236,6 +232,20 @@ const usernameLabel = computed(() => {
   }
   return labels[userType.value]
 })
+
+// ✅ 新增：监听用户类型变化，保存到 localStorage
+watch(userType, (newType) => {
+  console.log('用户类型切换为:', newType)
+  localStorage.setItem('lastLoginType', newType)
+  // 清除错误信息
+  error.value = null
+})
+
+// ✅ 新增：处理用户类型变化
+const handleUserTypeChange = (value) => {
+  console.log('handleUserTypeChange:', value)
+  userType.value = value
+}
 
 // 登录处理
 const handleLogin = async () => {
@@ -252,6 +262,9 @@ const handleLogin = async () => {
   try {
     let response
     let payload = { password: credentials.value.password }
+
+    // ✅ 保存当前登录类型
+    localStorage.setItem('lastLoginType', userType.value)
 
     if (userType.value === 'admin') {
       payload.admin_username = credentials.value.username
@@ -339,7 +352,7 @@ const handleResetPassword = async () => {
 
     ElMessage.success('密码重置成功')
     closeForgotPasswordModal()
-    resetInfo.value = { stu_name: '', email: '', code: '', password: '' }
+    resetInfo.value = {stu_name: '', email: '', code: '', password: ''}
 
   } catch (err) {
     resetError.value = err.response?.data?.error || '重置失败，请检查验证码'
@@ -351,16 +364,28 @@ const handleResetPassword = async () => {
 
 // 组件挂载
 onMounted(() => {
+  console.log('Login component mounted')
+
+  // 显示通知消息
   if (route.query.message === 'unauthorized') {
     notification.value = '您需要先登录才能访问该页面'
   } else if (route.query.message === 'session-expired') {
     notification.value = '登录已过期，请重新登录'
   }
 
+  // ✅ 从 localStorage 读取上次的登录类型
   const lastType = localStorage.getItem('lastLoginType')
+  console.log('上次登录类型:', lastType)
+
   if (lastType && ['admin', 'student', 'teacher'].includes(lastType)) {
     userType.value = lastType
+  } else {
+    // 如果没有记录，默认设置为 admin
+    userType.value = 'admin'
+    localStorage.setItem('lastLoginType', 'admin')
   }
+
+  console.log('当前用户类型:', userType.value)
 })
 </script>
 
@@ -393,7 +418,18 @@ onMounted(() => {
 }
 
 .user-type-selector {
+  width: 100%;
   margin-bottom: 24px;
+  display: flex;
+  justify-content: center;
+}
+
+.user-type-selector :deep(.el-radio-button) {
+  flex: 1;
+}
+
+.user-type-selector :deep(.el-radio-button__inner) {
+  width: 100%;
 }
 
 .login-form {

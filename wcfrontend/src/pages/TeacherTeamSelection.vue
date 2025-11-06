@@ -83,6 +83,15 @@
                 <el-tag v-else-if="team.my_preference_rank" type="info" size="small">
                   学生志愿
                 </el-tag>
+                <!-- ✅ 优化：查看完整信息按钮放在标签旁边 -->
+                <el-button
+                  type="primary"
+                  link
+                  size="small"
+                  @click="viewTeamDetail(team.group_id)"
+                >
+                  查看完整信息
+                </el-button>
               </div>
             </div>
           </template>
@@ -91,7 +100,7 @@
           <div class="team-section">
             <h4>{{ team.project_title || '未填写项目标题' }}</h4>
             <p class="project-description">
-              {{ team.project_description || '该团队尚未填写项目简介。' }}
+              {{ team.project_description_short || team.project_description || '该团队尚未填写项目简介。' }}
             </p>
           </div>
 
@@ -132,6 +141,12 @@
         <p style="margin: 20px 0;">请耐心等待管理员开启新的活动</p>
       </el-empty>
     </el-card>
+
+    <!-- ✅ 团队详情对话框 -->
+    <TeacherTeamDetailDialog
+      v-model="showTeamDetail"
+      :group-id="currentTeamId"
+    />
   </div>
 </template>
 
@@ -140,12 +155,17 @@ import { ref, onMounted, reactive, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Loading, InfoFilled } from '@element-plus/icons-vue'
 import api from '../services/api'
+import TeacherTeamDetailDialog from '../components/TeacherTeamDetailDialog.vue'
 
 const teams = ref([])
 const activeEvent = ref(null)
 const isLoading = ref(true)
 const error = ref(null)
 const preferences = reactive({})
+
+// ✅ 团队详情弹窗状态
+const showTeamDetail = ref(false)
+const currentTeamId = ref(null)
 
 const choiceLimitRange = computed(() => {
   if (!activeEvent.value) return []
@@ -170,6 +190,12 @@ const fetchDashboard = async () => {
 }
 
 onMounted(fetchDashboard)
+
+// ✅ 查看团队详情方法
+const viewTeamDetail = (groupId) => {
+  currentTeamId.value = groupId
+  showTeamDetail.value = true
+}
 
 const savePreferences = async () => {
   try {
@@ -319,6 +345,7 @@ const formatDate = (dateString) => {
 .team-tags {
   display: flex;
   gap: 8px;
+  align-items: center;
 }
 
 .team-section {

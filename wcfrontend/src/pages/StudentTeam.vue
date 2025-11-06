@@ -36,6 +36,14 @@
                 <h3>{{ dashboard.my_team_info.group_name }}</h3>
                 <el-tag v-if="dashboard.is_captain" type="warning" effect="plain">我是队长</el-tag>
               </div>
+              <!-- 查看完整信息按钮 -->
+              <el-button
+                type="primary"
+                link
+                @click="viewTeamDetail(dashboard.my_team_info.group_id)"
+              >
+                查看完整信息
+              </el-button>
             </div>
           </template>
 
@@ -54,7 +62,9 @@
             </div>
             <div class="section-content">
               <p class="project-title">{{ dashboard.my_team_info.project_title || '尚未填写项目标题' }}</p>
-              <p class="project-desc">{{ dashboard.my_team_info.project_description || '尚未填写项目简介' }}</p>
+              <p class="project-desc">
+                {{ dashboard.my_team_info.project_description_short || '尚未填写项目简介' }}
+              </p>
             </div>
           </div>
 
@@ -257,7 +267,7 @@
       </template>
     </el-dialog>
 
-    <!-- 选择导师对话框 - 优化版 -->
+    <!-- 选择导师对话框 -->
     <el-dialog
       v-model="isAdvisorModalVisible"
       title="选择志愿导师"
@@ -270,7 +280,6 @@
       </div>
 
       <div v-else class="advisor-selection-container">
-        <!-- 顶部提示 -->
         <el-alert
           title="请为您的团队选择三位志愿导师（按优先级顺序）"
           type="info"
@@ -278,7 +287,6 @@
           style="margin-bottom: 20px;"
         />
 
-        <!-- 已选志愿卡片 -->
         <div class="preferences-cards">
           <el-card
             v-for="level in [1, 2, 3]"
@@ -328,7 +336,6 @@
 
         <el-divider />
 
-        <!-- 导师列表 -->
         <div class="advisor-list-section">
           <div class="list-header">
             <h4>可选导师列表</h4>
@@ -517,6 +524,12 @@
 
       <el-empty v-else description="当前活动还没有人创建团队" />
     </el-dialog>
+
+    <!-- 团队详情对话框 -->
+    <TeamDetailDialog
+      v-model="showTeamDetail"
+      :group-id="currentTeamId"
+    />
   </div>
 </template>
 
@@ -525,6 +538,7 @@ import { ref, onMounted, reactive, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Loading, InfoFilled, Search, User } from '@element-plus/icons-vue'
 import api from '../services/api'
+import TeamDetailDialog from '../components/TeamDetailDialog.vue'
 
 // 状态定义
 const loading = ref(true)
@@ -543,6 +557,8 @@ const isAdvisorModalVisible = ref(false)
 const isInviteModalVisible = ref(false)
 const isAllTeamsModalVisible = ref(false)
 const showAdvisorDetail = ref(false)
+const showTeamDetail = ref(false)
+const currentTeamId = ref(null)
 
 // 表单数据
 const newTeam = ref({ group_name: '' })
@@ -581,7 +597,6 @@ const getAdvisorName = (teacherId) => {
 }
 
 const setPreference = (level, teacherId) => {
-  // 如果该导师已经在其他志愿中，先清除
   for (const key in preferences) {
     if (preferences[key] === teacherId) {
       preferences[key] = null
@@ -593,6 +608,11 @@ const setPreference = (level, teacherId) => {
 const showAdvisorDetails = (advisor) => {
   advisorDetail.value = advisor
   showAdvisorDetail.value = true
+}
+
+const viewTeamDetail = (groupId) => {
+  currentTeamId.value = groupId
+  showTeamDetail.value = true
 }
 
 const formatDate = (dateString) => {
@@ -995,7 +1015,6 @@ const handleAddMember = async (student) => {
   gap: 12px;
 }
 
-/* 导师选择对话框优化样式 */
 .preferences-cards {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
