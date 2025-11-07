@@ -4,22 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="5a3f43bc-5135-4223-8a01-96f06d2dbf59" name="更改" comment="前端完善">
-      <change afterPath="$PROJECT_DIR$/wcfrontend/src/pages/AdminProfile.vue" afterDir="false" />
+    <list default="true" id="5a3f43bc-5135-4223-8a01-96f06d2dbf59" name="更改" comment="应该是最终版了吧">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/adminapp/urls.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/adminapp/urls.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/adminapp/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/adminapp/views.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/classwork/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/classwork/settings.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/studentapp/urls.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/studentapp/urls.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/studentapp/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/studentapp/views.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/teacherapp/urls.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/teacherapp/urls.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/teacherapp/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/teacherapp/views.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/teamapp/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/teamapp/views.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wcfrontend/src/layouts/DashboardLayout.vue" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/layouts/DashboardLayout.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wcfrontend/src/pages/UserList.vue" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/pages/UserList.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wcfrontend/src/plugins/axios.js" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/plugins/axios.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wcfrontend/src/router/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/router/index.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wcfrontend/src/services/api.js" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/services/api.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/environment.yml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wcfrontend/vite.config.js" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/vite.config.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -309,7 +298,15 @@
       <option name="project" value="LOCAL" />
       <updated>1762455742162</updated>
     </task>
-    <option name="localTasksCounter" value="15" />
+    <task id="LOCAL-00015" summary="应该是最终版了吧">
+      <option name="closed" value="true" />
+      <created>1762459603576</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1762459603576</updated>
+    </task>
+    <option name="localTasksCounter" value="16" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -346,7 +343,8 @@
     <MESSAGE value="自动分配算法完善后，多活动bug" />
     <MESSAGE value="前端部分完善" />
     <MESSAGE value="前端完善" />
-    <option name="LAST_COMMIT_MESSAGE" value="前端完善" />
+    <MESSAGE value="应该是最终版了吧" />
+    <option name="LAST_COMMIT_MESSAGE" value="应该是最终版了吧" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

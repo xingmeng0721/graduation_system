@@ -12,7 +12,9 @@ export default defineConfig({
       }
     },
     allowedHosts: [
-      'www-www-www.u2202134.nyat.app'   // ✅ 允许的主机
+      'www-www-www.u2202134.nyat.app',
+      'localhost',
+      '127.0.0.1'// ✅ 允许的主机
     ]
   }
 })
