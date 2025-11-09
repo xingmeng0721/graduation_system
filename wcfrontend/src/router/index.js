@@ -1,6 +1,10 @@
 import { createRouter, createWebHistory } from 'vue-router';
+// ✅ 1. 导入 ElMessage 组件本身
+import { ElMessage } from 'element-plus';
+// ✅ 2. 导入 ElMessage 的样式，否则弹窗会很丑
+import 'element-plus/es/components/message/style/css';
 
-import Login from '../components/Login.vue';
+import Login from '../components/login.vue';
 import DashboardLayout from '../layouts/DashboardLayout.vue';
 import UserList from '../pages/UserList.vue';
 import RegisterUser from '../pages/RegisterUser.vue';

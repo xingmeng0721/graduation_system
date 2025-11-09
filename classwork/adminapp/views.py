@@ -18,6 +18,7 @@ from .serializers import (
     TeacherManagementSerializer, TeacherProfileSerializer,
     MutualSelectionEventListSerializer, MutualSelectionEventSerializer
 )
+from concurrent.futures import ThreadPoolExecutor
 import pandas as pd
 import io
 from django.http import HttpResponse
@@ -343,9 +344,11 @@ class DownloadStudentTemplateView(views.APIView):
 
 class BulkRegisterStudentsView(views.APIView):
     """
-    通过上传Excel文件批量注册学生。
+    高性能异步版：通过上传Excel批量注册学生
     """
     parser_classes = (MultiPartParser, FormParser)
+    THREADS = 4
+    BATCH_SIZE = 500
 
     def post(self, request, *args, **kwargs):
         file_obj = request.FILES.get('file')
@@ -363,12 +366,25 @@ class BulkRegisterStudentsView(views.APIView):
             return Response({'error': f'Excel文件中缺少必需的列: {", ".join(missing)}'},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        students_to_create = []
-        failed_entries = []
-
+        # 缓存已有学生学号和专业
         existing_stu_nos = set(Student.objects.values_list('stu_no', flat=True))
+        existing_majors = {m.major_name: m for m in Major.objects.all()}
 
-        for index, row in df.iterrows():
+        # 批量创建缺失专业
+        major_names_in_excel = set(df['major'].str.strip().dropna())
+        new_majors = major_names_in_excel - set(existing_majors.keys())
+        new_major_objs = [Major(major_name=name) for name in new_majors]
+        if new_major_objs:
+            Major.objects.bulk_create(new_major_objs)
+            # 更新字典
+            existing_majors.update({m.major_name: m for m in Major.objects.filter(major_name__in=new_majors)})
+
+        failed_entries = []
+        students_to_create = []
+
+        def process_row(index_row):
+            index, row = index_row
+            row_num = index + 2
             stu_no = row.get('stu_no', '').strip()
             stu_name = row.get('stu_name', '').strip()
             password = row.get('password', '').strip()
@@ -377,39 +393,43 @@ class BulkRegisterStudentsView(views.APIView):
             phone = row.get('phone', '').strip()
             email = row.get('email', '').strip()
 
-            row_num = index + 2
-
             if not all([stu_no, stu_name, password, grade, major_name]):
-                failed_entries.append(
-                    {'row': row_num, 'stu_no': stu_no, 'error': '缺少必填字段 (学号, 姓名, 密码, 年级, 专业)。'})
-                continue
+                return {'row': row_num, 'stu_no': stu_no, 'error': '缺少必填字段 (学号, 姓名, 密码, 年级, 专业)。'}
 
             if stu_no in existing_stu_nos:
-                failed_entries.append({'row': row_num, 'stu_no': stu_no, 'error': f'学号 "{stu_no}" 已存在。'})
-                continue
+                return {'row': row_num, 'stu_no': stu_no, 'error': f'学号 "{stu_no}" 已存在。'}
 
-            try:
-                major_obj, _ = Major.objects.get_or_create(major_name=major_name)
+            major_obj = existing_majors.get(major_name)
+            if not major_obj:
+                return {'row': row_num, 'stu_no': stu_no, 'error': f'专业 "{major_name}" 不存在。'}
 
-                student = Student(
-                    stu_no=stu_no,
-                    stu_name=stu_name,
-                    grade=grade,
-                    major=major_obj,
-                    phone=phone if phone else None,
-                    email=email if email else None,
-                )
-                student.set_password(password)
-                students_to_create.append(student)
+            student = Student(
+                stu_no=stu_no,
+                stu_name=stu_name,
+                grade=grade,
+                major=major_obj,
+                phone=phone if phone else None,
+                email=email if email else None,
+            )
+            student.set_password(password)
+            existing_stu_nos.add(stu_no)
+            return student
 
-                existing_stu_nos.add(stu_no)
+        # 使用线程池加速处理每行数据
+        with ThreadPoolExecutor(max_workers=self.THREADS) as executor:
+            results = list(executor.map(process_row, df.iterrows()))
 
-            except Exception as e:
-                failed_entries.append({'row': row_num, 'stu_no': stu_no, 'error': f'创建学生对象时发生内部错误: {e}'})
+        for res in results:
+            if isinstance(res, dict):
+                failed_entries.append(res)
+            else:
+                students_to_create.append(res)
 
+        # 分批写入数据库
         if students_to_create:
             with transaction.atomic():
-                Student.objects.bulk_create(students_to_create)
+                for i in range(0, len(students_to_create), self.BATCH_SIZE):
+                    Student.objects.bulk_create(students_to_create[i:i+self.BATCH_SIZE])
 
         return Response({
             'message': f'处理完成。成功注册 {len(students_to_create)} 名学生。',
