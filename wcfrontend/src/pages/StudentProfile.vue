@@ -1,129 +1,293 @@
 <template>
-  <div class="student-profile">
-    <h2>个人信息管理</h2>
-    <div v-if="loading" class="loading-spinner">加载中...</div>
-    <div v-if="error" class="error-message">{{ error }}</div>
-
-    <!-- 个人信息表单 -->
-    <div v-if="student" class="profile-card">
-      <h3>欢迎，{{ student.stu_name }}</h3>
-
-      <!-- 学号，不可修改 -->
-      <p><strong>学号：</strong>{{ student.stu_no }}</p>
-
-      <!-- 可编辑的字段：年级，专业，手机号 -->
-      <div>
-        <label for="grade">年级：</label>
-        <input v-if="isEditing" v-model="student.grade" type="text" id="grade" />
-        <span v-else>{{ student.grade }}</span>
-      </div>
-
-      <div>
-        <label for="major">专业：</label>
-        <input v-if="isEditing" v-model="student.major_name" type="text" id="major" />
-        <span v-else>{{ student.major_name || '未分配' }}</span>
-      </div>
-
-      <div>
-        <label for="phone">手机号：</label>
-        <input v-if="isEditing" v-model="student.phone" type="text" id="phone" />
-        <span v-else>{{ student.phone || '未提供' }}</span>
-      </div>
-
-      <!-- 修改和保存按钮 -->
-      <button v-if="!isEditing" @click="editProfile" class="btn-edit">修改</button>
-      <button v-if="isEditing" @click="saveProfile" class="btn-save">保存</button>
+  <div class="page-container">
+    <div class="page-header">
+      <h2>个人信息</h2>
     </div>
+
+    <!-- 加载状态 -->
+    <div v-if="loading" class="loading-container">
+      <el-icon class="is-loading" :size="40"><Loading /></el-icon>
+      <p>正在加载信息...</p>
+    </div>
+
+    <!-- 错误提示 -->
+    <el-alert
+      v-if="error"
+      :title="error"
+      type="error"
+      :closable="false"
+      show-icon
+    />
+
+    <!-- 个人信息卡片 -->
+    <el-card v-if="student" class="profile-card" shadow="never">
+      <template #header>
+        <div class="card-header">
+          <span>基本信息</span>
+          <el-button
+            v-if="!isEditing"
+            type="primary"
+            @click="startEditing"
+          >
+            修改信息
+          </el-button>
+          <div v-else class="edit-actions">
+            <el-button @click="cancelEditing">取消</el-button>
+            <el-button
+              type="primary"
+              @click="saveProfile"
+              :loading="isSaving"
+            >
+              保存
+            </el-button>
+          </div>
+        </div>
+      </template>
+
+      <el-form label-width="100px" class="profile-form">
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="姓名">
+              <el-input v-model="student.stu_name" disabled />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="学号">
+              <el-input v-model="student.stu_no" disabled />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="年级">
+              <el-input v-model="student.grade" disabled />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="专业">
+              <el-input :value="student.major || '未分配'" disabled />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="手机号">
+              <el-input
+                v-if="isEditing"
+                v-model="editableStudent.phone"
+                placeholder="请输入手机号"
+                clearable
+              />
+              <el-input v-else :value="student.phone || '未填写'" disabled />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="电子邮箱">
+              <el-input
+                v-if="isEditing"
+                v-model="editableStudent.email"
+                placeholder="请输入电子邮箱"
+                clearable
+              />
+              <el-input v-else :value="student.email || '未填写'" disabled />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <!-- 密码修改区域 -->
+        <template v-if="isEditing">
+          <el-divider content-position="left">修改密码（选填）</el-divider>
+
+          <el-row :gutter="20">
+            <el-col :span="8">
+              <el-form-item label="原密码">
+                <el-input
+                  v-model="editableStudent.old_password"
+                  type="password"
+                  placeholder="如需修改密码，请填写"
+                  show-password
+                />
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="新密码">
+                <el-input
+                  v-model="editableStudent.new_password"
+                  type="password"
+                  placeholder="留空则不修改"
+                  show-password
+                />
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="确认新密码">
+                <el-input
+                  v-model="editableStudent.confirm_password"
+                  type="password"
+                  placeholder="再次输入新密码"
+                  show-password
+                />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </template>
+
+        <!-- 消息提示 -->
+        <el-alert
+          v-if="saveError"
+          :title="saveError"
+          type="error"
+          :closable="false"
+          show-icon
+          style="margin-top: 16px;"
+        />
+
+        <el-alert
+          v-if="saveSuccess"
+          :title="saveSuccess"
+          type="success"
+          :closable="false"
+          show-icon
+          style="margin-top: 16px;"
+        />
+      </el-form>
+    </el-card>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import api from '../services/api';
+import { ref, onMounted, reactive } from 'vue'
+import { ElMessage } from 'element-plus'
+import { Loading } from '@element-plus/icons-vue'
+import api from '../services/api'
 
-const student = ref(null);
-const loading = ref(true);
-const error = ref(null);
-const isEditing = ref(false);  // 控制是否进入编辑状态
+const student = ref(null)
+const loading = ref(true)
+const error = ref(null)
+const isEditing = ref(false)
+const isSaving = ref(false)
+const saveError = ref(null)
+const saveSuccess = ref(null)
+
+const editableStudent = reactive({
+  phone: '',
+  email: '',
+  old_password: '',
+  new_password: '',
+  confirm_password: ''
+})
 
 onMounted(async () => {
   try {
-    const response = await api.getStudentProfile();
-    student.value = response.data;  // 获取学生信息并赋值
+    const response = await api.getStudentProfile()
+    student.value = response.data
   } catch (err) {
-    console.error('获取学生信息失败:', err);
-    error.value = '无法加载个人信息，请稍后再试。';
+    error.value = '无法加载个人信息，请刷新页面或稍后再试'
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-});
+})
 
-// 进入编辑模式
-const editProfile = () => {
-  isEditing.value = true;  // 修改状态设为 true，显示输入框
-};
+const startEditing = () => {
+  editableStudent.phone = student.value.phone || ''
+  editableStudent.email = student.value.email || ''
+  editableStudent.old_password = ''
+  editableStudent.new_password = ''
+  editableStudent.confirm_password = ''
 
-// 保存修改的个人信息
+  isEditing.value = true
+  saveError.value = null
+  saveSuccess.value = null
+}
+
+const cancelEditing = () => {
+  isEditing.value = false
+}
+
 const saveProfile = async () => {
-  try {
-    await api.updateStudentProfile(student.value);  // 假设你已经有 updateStudentProfile API 用于更新数据
-    isEditing.value = false;  // 保存后退出编辑状态
-  } catch (err) {
-    console.error('保存学生信息失败:', err);
-    error.value = '保存个人信息失败，请稍后再试。';
+  isSaving.value = true
+  saveError.value = null
+  saveSuccess.value = null
+
+  const dataToUpdate = { ...editableStudent }
+
+  if (!dataToUpdate.new_password && !dataToUpdate.old_password) {
+    delete dataToUpdate.old_password
+    delete dataToUpdate.new_password
+    delete dataToUpdate.confirm_password
   }
-};
+
+  try {
+    const response = await api.updateStudentProfile(dataToUpdate)
+    student.value = response.data
+    isEditing.value = false
+    saveSuccess.value = '个人信息更新成功！'
+    ElMessage.success('个人信息更新成功！')
+    setTimeout(() => { saveSuccess.value = null }, 2000)
+  } catch (err) {
+    if (err.response && err.response.data) {
+      const errorDetails = Object.values(err.response.data).flat().join('\n')
+      saveError.value = `保存失败: ${errorDetails}`
+    } else {
+      saveError.value = '保存个人信息失败，请检查网络或稍后再试'
+    }
+    ElMessage.error(saveError.value)
+  } finally {
+    isSaving.value = false
+  }
+}
 </script>
 
 <style scoped>
-.student-profile {
-  padding: 20px;
-  background-color: #fff;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
-  max-width: 600px;
-  margin: 20px auto;
+.page-container {
+  max-width: 900px;
+}
+
+.page-header {
+  margin-bottom: 20px;
+}
+
+.page-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px;
+  color: #909399;
+}
+
+.loading-container p {
+  margin-top: 16px;
 }
 
 .profile-card {
-  padding: 20px;
+  border-radius: 8px;
 }
 
-.error-message {
-  color: red;
-  text-align: center;
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
 }
 
-.loading-spinner {
-  text-align: center;
-  font-size: 18px;
-  color: #34495e;
-  padding: 50px;
+.edit-actions {
+  display: flex;
+  gap: 12px;
 }
 
-input {
-  padding: 8px;
-  margin: 5px 0;
-  width: 100%;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-}
-
-button {
-  padding: 10px 20px;
-  margin: 10px 0;
-  cursor: pointer;
-  border: none;
-  border-radius: 4px;
-}
-
-.btn-edit {
-  background-color: #2ecc71;
-  color: white;
-}
-
-.btn-save {
-  background-color: #3498db;
-  color: white;
+.profile-form {
+  margin-top: 24px;
 }
 </style>

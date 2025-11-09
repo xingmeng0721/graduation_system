@@ -1,9 +1,9 @@
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.utils import timezone
 import django_filters
 from django.contrib.auth import authenticate
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import generics, status, views, viewsets,filters
+from rest_framework import generics, status, views, viewsets, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -12,16 +12,25 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from django.contrib.auth.hashers import check_password, make_password
 from .models import AdminUser, MutualSelectionEvent
 from teacherapp.models import teacher
-from .serializers import AdminUserSerializer, LoginSerializer, UserProfileSerializer, StudentManagementSerializer, \
-    StudentListSerializer, MajorSerializer, TeacherManagementSerializer, \
-    TeacherProfileSerializer, MutualSelectionEventListSerializer, MutualSelectionEventSerializer
+from .serializers import (
+    AdminUserSerializer, LoginSerializer, UserProfileSerializer,
+    StudentManagementSerializer, StudentListSerializer, MajorSerializer,
+    TeacherManagementSerializer, TeacherProfileSerializer,
+    MutualSelectionEventListSerializer, MutualSelectionEventSerializer
+)
+from concurrent.futures import ThreadPoolExecutor
 import pandas as pd
 import io
 from django.http import HttpResponse
 from django.db import transaction
+
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from studentapp.models import Student, Major
-from teamapp.models import Group
+from teamapp.models import Group, GroupMembership
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from rest_framework_simplejwt.exceptions import TokenError
 
 
 class RegisterView(generics.CreateAPIView):
@@ -62,12 +71,74 @@ class LoginView(APIView):
             return Response({'detail': '用户名或密码错误。'}, status=status.HTTP_401_UNAUTHORIZED)
 
 
+class AdminProfileView(views.APIView):
+    """
+    管理员查看和更新自己的个人信息
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        """获取当前登录管理员的信息"""
+        admin_user = request.user
+        if not isinstance(admin_user, AdminUser):
+            return Response(
+                {'error': '当前用户不是管理员账号'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        serializer = UserProfileSerializer(admin_user)
+        return Response(serializer.data)
+
+    def put(self, request, *args, **kwargs):
+        """更新当前管理员的信息"""
+        admin_user = request.user
+        if not isinstance(admin_user, AdminUser):
+            return Response(
+                {'error': '当前用户不是管理员账号'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # 只允许更新 admin_name 和密码
+        admin_name = request.data.get('admin_name')
+        old_password = request.data.get('old_password')
+        new_password = request.data.get('new_password')
+
+        if admin_name:
+            # 检查名称是否已被其他管理员使用
+            if AdminUser.objects.filter(admin_name=admin_name).exclude(admin_id=admin_user.admin_id).exists():
+                return Response(
+                    {'error': f'名称 "{admin_name}" 已被使用'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            admin_user.admin_name = admin_name
+
+        # 如果要修改密码，需要验证旧密码
+        if new_password:
+            if not old_password:
+                return Response(
+                    {'error': '修改密码需要提供旧密码'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if not check_password(old_password, admin_user.admin_password):
+                return Response(
+                    {'error': '旧密码不正确'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            admin_user.admin_password = make_password(new_password)
+
+        admin_user.save()
+        return Response(
+            UserProfileSerializer(admin_user).data,
+            status=status.HTTP_200_OK
+        )
+
 class DownloadTemplateView(views.APIView):
     """
     下载用于批量注册的Excel模板
     """
+
     def get(self, request, *args, **kwargs):
-        # 创建一个包含示例数据的DataFrame
         data = {
             'admin_name': ['示例用户', 'John Doe'],
             'admin_username': ['example_user', 'johndoe'],
@@ -75,21 +146,12 @@ class DownloadTemplateView(views.APIView):
         }
         df = pd.DataFrame(data)
 
-        # 将DataFrame写入内存中的Excel文件
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             df.to_excel(writer, index=False, sheet_name='Users')
 
-        # 重置指针到文件开头
         output.seek(0)
 
-        """"准备 HTTP 响应：
-        output.seek(0) 将内存流的指针移回开头，以便读取其全部内容。
-        创建一个 HttpResponse 对象，其内容是内存中的 Excel 文件数据。
-        设置 content_type 为 application/vnd.openxmlformats-officedocument.spreadsheetml.sheet，告知浏览器这是一个 Excel 文件。
-        设置 Content-Disposition 响应头为 attachment; filename="registration_template.xlsx"，这会使浏览器弹出文件下载对话框，并指定默认文件名为 registration_template.xlsx。
-        返回响应：将构建好的 HttpResponse 对象返回给客户端，用户即可下载该模板文件"""
-        # 创建HTTP响应
         response = HttpResponse(
             output.read(),
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -116,7 +178,6 @@ class BulkRegisterView(views.APIView):
         except Exception as e:
             return Response({'error': f'文件读取失败: {e}'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 检查必需的列是否存在
         required_columns = {'admin_name', 'admin_username', 'password'}
         if not required_columns.issubset(df.columns):
             missing = required_columns - set(df.columns)
@@ -130,11 +191,9 @@ class BulkRegisterView(views.APIView):
             admin_username = row.get('admin_username')
             password = row.get('password')
 
-            # 简单的数据校验
             if not all([admin_name, admin_username, password]):
                 return Response({'error': f'行 {index + 2}: 所有字段均为必填项。'}, status=status.HTTP_400_BAD_REQUEST)
 
-            # 检查用户名和名称是否已存在
             if AdminUser.objects.filter(admin_username=admin_username).exists():
                 return Response({'error': f'行 {index + 2}: 用户名 "{admin_username}" 已存在。'},
                                 status=status.HTTP_400_BAD_REQUEST)
@@ -150,7 +209,6 @@ class BulkRegisterView(views.APIView):
                 )
             )
 
-        # 如果所有行都验证通过，则一次性批量创建用户
         AdminUser.objects.bulk_create(users_to_create)
 
         return Response({'message': f'成功注册 {len(users_to_create)} 名用户。'}, status=status.HTTP_201_CREATED)
@@ -160,6 +218,7 @@ class DownloadTeacherTemplateView(views.APIView):
     """
     下载用于教师批量注册的Excel模板。
     """
+
     def get(self, request, *args, **kwargs):
         data = {
             'teacher_no': ['T2025001', 'T2025002'],
@@ -202,7 +261,8 @@ class BulkRegisterTeachersView(views.APIView):
         required_columns = {'teacher_no', 'teacher_name', 'password'}
         if not required_columns.issubset(df.columns):
             missing = required_columns - set(df.columns)
-            return Response({'error': f'Excel文件中缺少必需的列: {", ".join(missing)}'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': f'Excel文件中缺少必需的列: {", ".join(missing)}'},
+                            status=status.HTTP_400_BAD_REQUEST)
 
         teachers_to_create = []
         failed_entries = []
@@ -215,11 +275,13 @@ class BulkRegisterTeachersView(views.APIView):
             password = row.get('password', '').strip()
 
             if not all([teacher_no, teacher_name, password]):
-                failed_entries.append({'row': row_num, 'teacher_no': teacher_no, 'error': '缺少必填字段 (工号, 姓名, 密码)。'})
+                failed_entries.append(
+                    {'row': row_num, 'teacher_no': teacher_no, 'error': '缺少必填字段 (工号, 姓名, 密码)。'})
                 continue
 
             if teacher_no in existing_teacher_nos:
-                failed_entries.append({'row': row_num, 'teacher_no': teacher_no, 'error': f'工号 "{teacher_no}" 已存在。'})
+                failed_entries.append(
+                    {'row': row_num, 'teacher_no': teacher_no, 'error': f'工号 "{teacher_no}" 已存在。'})
                 continue
 
             try:
@@ -235,7 +297,8 @@ class BulkRegisterTeachersView(views.APIView):
                 teachers_to_create.append(new_teacher)
                 existing_teacher_nos.add(teacher_no)
             except Exception as e:
-                failed_entries.append({'row': row_num, 'teacher_no': teacher_no, 'error': f'创建教师对象时发生内部错误: {e}'})
+                failed_entries.append(
+                    {'row': row_num, 'teacher_no': teacher_no, 'error': f'创建教师对象时发生内部错误: {e}'})
 
         if teachers_to_create:
             with transaction.atomic():
@@ -249,13 +312,12 @@ class BulkRegisterTeachersView(views.APIView):
         }, status=status.HTTP_201_CREATED)
 
 
-
 class DownloadStudentTemplateView(views.APIView):
     """
     下载用于学生批量注册的Excel模板。
     """
+
     def get(self, request, *args, **kwargs):
-        # 定义模板的列和示例数据
         data = {
             'stu_no': ['2024001', '2024002'],
             'stu_name': ['张三', '李四'],
@@ -267,13 +329,11 @@ class DownloadStudentTemplateView(views.APIView):
         }
         df = pd.DataFrame(data)
 
-        # 创建内存中的Excel文件
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             df.to_excel(writer, index=False, sheet_name='Students')
         output.seek(0)
 
-        # 创建并返回HTTP响应
         response = HttpResponse(
             output.read(),
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -284,10 +344,11 @@ class DownloadStudentTemplateView(views.APIView):
 
 class BulkRegisterStudentsView(views.APIView):
     """
-    通过上传Excel文件批量注册学生。
-    会自动跳过无效数据行，并报告错误。
+    高性能异步版：通过上传Excel批量注册学生
     """
     parser_classes = (MultiPartParser, FormParser)
+    THREADS = 4
+    BATCH_SIZE = 500
 
     def post(self, request, *args, **kwargs):
         file_obj = request.FILES.get('file')
@@ -295,24 +356,35 @@ class BulkRegisterStudentsView(views.APIView):
             return Response({'error': '未找到上传的文件。'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            df = pd.read_excel(file_obj, dtype=str).fillna('')  # 读取所有数据为字符串，并将NaN替换为空字符串
+            df = pd.read_excel(file_obj, dtype=str).fillna('')
         except Exception as e:
             return Response({'error': f'无法解析Excel文件: {e}'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 检查必需的列
         required_columns = {'stu_no', 'stu_name', 'password', 'grade', 'major'}
         if not required_columns.issubset(df.columns):
             missing = required_columns - set(df.columns)
             return Response({'error': f'Excel文件中缺少必需的列: {", ".join(missing)}'},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        students_to_create = []
-        failed_entries = []
-
-        # 预先获取所有已存在的学号，以减少数据库查询次数
+        # 缓存已有学生学号和专业
         existing_stu_nos = set(Student.objects.values_list('stu_no', flat=True))
+        existing_majors = {m.major_name: m for m in Major.objects.all()}
 
-        for index, row in df.iterrows():
+        # 批量创建缺失专业
+        major_names_in_excel = set(df['major'].str.strip().dropna())
+        new_majors = major_names_in_excel - set(existing_majors.keys())
+        new_major_objs = [Major(major_name=name) for name in new_majors]
+        if new_major_objs:
+            Major.objects.bulk_create(new_major_objs)
+            # 更新字典
+            existing_majors.update({m.major_name: m for m in Major.objects.filter(major_name__in=new_majors)})
+
+        failed_entries = []
+        students_to_create = []
+
+        def process_row(index_row):
+            index, row = index_row
+            row_num = index + 2
             stu_no = row.get('stu_no', '').strip()
             stu_name = row.get('stu_name', '').strip()
             password = row.get('password', '').strip()
@@ -321,49 +393,44 @@ class BulkRegisterStudentsView(views.APIView):
             phone = row.get('phone', '').strip()
             email = row.get('email', '').strip()
 
-            # --- 数据校验 ---
-            row_num = index + 2  # Excel中的行号（考虑到表头）
-
-            # 1. 检查必填字段
             if not all([stu_no, stu_name, password, grade, major_name]):
-                failed_entries.append(
-                    {'row': row_num, 'stu_no': stu_no, 'error': '缺少必填字段 (学号, 姓名, 密码, 年级, 专业)。'})
-                continue
+                return {'row': row_num, 'stu_no': stu_no, 'error': '缺少必填字段 (学号, 姓名, 密码, 年级, 专业)。'}
 
-            # 2. 检查学号是否已存在
             if stu_no in existing_stu_nos:
-                failed_entries.append({'row': row_num, 'stu_no': stu_no, 'error': f'学号 "{stu_no}" 已存在。'})
-                continue
+                return {'row': row_num, 'stu_no': stu_no, 'error': f'学号 "{stu_no}" 已存在。'}
 
-            # --- 准备数据 ---
-            try:
-                # 获取或创建专业对象
-                major_obj, _ = Major.objects.get_or_create(major_name=major_name)
+            major_obj = existing_majors.get(major_name)
+            if not major_obj:
+                return {'row': row_num, 'stu_no': stu_no, 'error': f'专业 "{major_name}" 不存在。'}
 
-                # 创建Student对象（但不保存）
-                student = Student(
-                    stu_no=stu_no,
-                    stu_name=stu_name,
-                    grade=grade,
-                    major=major_obj,
-                    phone=phone if phone else None,
-                    email=email if email else None,
-                )
-                student.set_password(password)  # 设置哈希密码
-                students_to_create.append(student)
+            student = Student(
+                stu_no=stu_no,
+                stu_name=stu_name,
+                grade=grade,
+                major=major_obj,
+                phone=phone if phone else None,
+                email=email if email else None,
+            )
+            student.set_password(password)
+            existing_stu_nos.add(stu_no)
+            return student
 
-                # 将刚验证通过的学号加入集合，防止Excel内部有重复学号
-                existing_stu_nos.add(stu_no)
+        # 使用线程池加速处理每行数据
+        with ThreadPoolExecutor(max_workers=self.THREADS) as executor:
+            results = list(executor.map(process_row, df.iterrows()))
 
-            except Exception as e:
-                failed_entries.append({'row': row_num, 'stu_no': stu_no, 'error': f'创建学生对象时发生内部错误: {e}'})
+        for res in results:
+            if isinstance(res, dict):
+                failed_entries.append(res)
+            else:
+                students_to_create.append(res)
 
-        # 使用事务一次性批量创建所有合法的学生
+        # 分批写入数据库
         if students_to_create:
             with transaction.atomic():
-                Student.objects.bulk_create(students_to_create)
+                for i in range(0, len(students_to_create), self.BATCH_SIZE):
+                    Student.objects.bulk_create(students_to_create[i:i+self.BATCH_SIZE])
 
-        # 构建最终的响应
         return Response({
             'message': f'处理完成。成功注册 {len(students_to_create)} 名学生。',
             'success_count': len(students_to_create),
@@ -372,13 +439,80 @@ class BulkRegisterStudentsView(views.APIView):
         }, status=status.HTTP_201_CREATED)
 
 
-
-class AdminUserListView(generics.ListAPIView):
+class AdminUserManagementViewSet(viewsets.ModelViewSet):
     """
-    管理员列表视图，只显示安全的字段
+    管理员管理视图集，支持列表查看、创建、更新、删除和批量删除
     """
     queryset = AdminUser.objects.all().order_by('-admin_id')
-    serializer_class = UserProfileSerializer # 使用安全的只读序列化器
+    serializer_class = UserProfileSerializer
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['admin_username', 'admin_name']
+
+    def get_serializer_class(self):
+        """根据操作返回不同的序列化器"""
+        if self.action == 'create':
+            return AdminUserSerializer
+        return UserProfileSerializer
+
+    def destroy(self, request, *args, **kwargs):
+        """删除单个管理员"""
+        admin_user = self.get_object()
+
+        # 防止删除自己
+        if admin_user.admin_id == request.user.admin_id:
+            return Response(
+                {'error': '不能删除自己的账号'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 防止删除最后一个管理员
+        if AdminUser.objects.count() <= 1:
+            return Response(
+                {'error': '系统至少需要保留一个管理员账号'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        admin_name = admin_user.admin_name
+        admin_user.delete()
+        return Response(
+            {'message': f'已成功删除管理员 {admin_name}'},
+            status=status.HTTP_200_OK
+        )
+
+    @action(detail=False, methods=['post'], url_path='bulk-delete')
+    @transaction.atomic
+    def bulk_delete(self, request, *args, **kwargs):
+        """批量删除管理员"""
+        admin_ids = request.data.get('ids')
+
+        if not isinstance(admin_ids, list) or not admin_ids:
+            return Response(
+                {'error': '请求体中必须包含一个非空的 "ids" 列表'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 防止删除自己
+        if request.user.admin_id in admin_ids:
+            return Response(
+                {'error': '不能删除自己的账号'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 检查删除后是否还有管理员
+        remaining_count = AdminUser.objects.exclude(admin_id__in=admin_ids).count()
+        if remaining_count < 1:
+            return Response(
+                {'error': '系统至少需要保留一个管理员账号'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        queryset = self.get_queryset().filter(admin_id__in=admin_ids)
+        deleted_count, _ = queryset.delete()
+
+        return Response(
+            {'message': f'成功删除 {deleted_count} 名管理员'},
+            status=status.HTTP_200_OK
+        )
 
 
 class TeacherManagementViewSet(viewsets.ModelViewSet):
@@ -387,26 +521,20 @@ class TeacherManagementViewSet(viewsets.ModelViewSet):
     """
     queryset = teacher.objects.all().order_by('teacher_id')
 
-    # 1. 启用搜索功能
     filter_backends = [filters.SearchFilter]
-
-    # 2. 定义可以被搜索的字段
     search_fields = ['teacher_no', 'teacher_name']
 
     def get_serializer_class(self):
         """根据操作返回不同的序列化器。"""
-        # 对于列表视图，使用只读的 Profile 序列化器
         if self.action == 'list':
             return TeacherProfileSerializer
-        # 对于创建、更新等写操作，使用功能更全的管理序列化器
         return TeacherManagementSerializer
 
-    # 3. 添加批量删除的自定义 action
     @action(detail=False, methods=['post'], url_path='bulk-delete')
+    @transaction.atomic
     def bulk_delete(self, request, *args, **kwargs):
         """
-        根据提供的教师ID列表，批量删除教师。
-        请求体格式: { "ids": [1, 2, 3] }
+        ✅ 修正：批量删除教师前，先处理多活动关联数据
         """
         teacher_ids = request.data.get('ids')
 
@@ -416,39 +544,61 @@ class TeacherManagementViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # ✅ 1. 清理这些教师在所有活动中的团队志愿
+        Group.objects.filter(preferred_advisor_1_id__in=teacher_ids).update(preferred_advisor_1=None)
+        Group.objects.filter(preferred_advisor_2_id__in=teacher_ids).update(preferred_advisor_2=None)
+        Group.objects.filter(preferred_advisor_3_id__in=teacher_ids).update(preferred_advisor_3=None)
+
+        # ✅ 2. 清理这些教师在所有活动中的最终指导关系
+        Group.objects.filter(advisor_id__in=teacher_ids).update(advisor=None)
+
+        # ✅ 3. 删除教师（外键级联会自动删除 TeacherGroupPreference 和 ProvisionalAssignment）
         queryset = self.get_queryset().filter(teacher_id__in=teacher_ids)
         deleted_count, _ = queryset.delete()
 
         return Response(
-            {'message': f'成功删除 {deleted_count} 名教师。'},
+            {'message': f'成功删除 {deleted_count} 名教师及其所有活动关联数据。'},
             status=status.HTTP_200_OK
         )
 
 
-
-
 class StudentFilter(django_filters.FilterSet):
+    """
+    ✅ 修正：多活动适配 - 支持按活动ID筛选团队
+    """
     major_name = django_filters.CharFilter(field_name='major__major_name', lookup_expr='icontains')
-    team_name = django_filters.CharFilter(field_name='membership__group__group_name', lookup_expr='icontains')
+    team_name = django_filters.CharFilter(method='filter_by_team_name')
+    event_id = django_filters.NumberFilter(method='filter_by_event')
+
     class Meta:
         model = Student
-        fields = ['grade', 'major_name', 'team_name']
+        fields = ['grade', 'major_name', 'team_name', 'event_id']
+
+    def filter_by_team_name(self, queryset, name, value):
+        """
+        按团队名称筛选学生（跨所有活动）
+        """
+        return queryset.filter(memberships__group__group_name__icontains=value).distinct()
+
+    def filter_by_event(self, queryset, name, value):
+        """
+        按活动ID筛选学生（只返回参与该活动的学生）
+        """
+        return queryset.filter(
+            Q(memberships__group__event_id=value) | Q(mutual_selection_events__event_id=value)
+        ).distinct()
 
 
 class StudentManagementViewSet(viewsets.ModelViewSet):
     """
-    学生管理视图集，支持筛选、排序、单个和批量操作。
+    ✅ 修正：学生管理视图集，支持多活动场景
     """
-    queryset = Student.objects.select_related(
-        'major',
-        'membership__group'
-    ).prefetch_related(
-        'led_group'
+    queryset = Student.objects.select_related('major').prefetch_related(
+        'memberships__group__event',  # ✅ 改为 memberships（复数）
+        'led_groups__event'  # ✅ 改为 led_groups（复数）
     ).all().order_by('stu_id')
 
-    # 启用 django-filter 后端
-    filter_backends = [DjangoFilterBackend,filters.SearchFilter]
-    # 指定用于此视图集的 FilterSet 类
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_class = StudentFilter
     search_fields = ['stu_no', 'stu_name']
 
@@ -458,31 +608,43 @@ class StudentManagementViewSet(viewsets.ModelViewSet):
             return StudentListSerializer
         return StudentManagementSerializer
 
-    # 3. 新增：批量删除的自定义 action
     @action(detail=False, methods=['post'], url_path='bulk-delete')
+    @transaction.atomic
     def bulk_delete(self, request, *args, **kwargs):
         """
-        根据提供的学生ID列表，批量删除学生。
-        期望的请求体格式: { "ids": [1, 2, 3] }
+        ✅ 修正：批量删除学生前，先处理多活动场景下的团队数据
         """
         student_ids = request.data.get('ids')
 
-        # 数据校验
         if not isinstance(student_ids, list) or not student_ids:
             return Response(
                 {'error': '请求体中必须包含一个非空的 "ids" 列表。'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # ✅ 1. 找出这些学生在所有活动中担任队长的团队
+        groups_led_by_students = Group.objects.filter(captain_id__in=student_ids)
 
+        for group in groups_led_by_students:
+            # 如果团队只有队长一人，删除团队
+            if group.members.count() == 1:
+                group.delete()
+            else:
+                # 如果团队有多人，将队长置空（需要手动重新指定）
+                group.captain = None
+                group.save()
+
+        # ✅ 2. 删除这些学生在所有活动中的成员关系（级联会自动处理）
+        GroupMembership.objects.filter(student_id__in=student_ids).delete()
+
+        # ✅ 3. 删除学生
         queryset = self.get_queryset().filter(stu_id__in=student_ids)
         deleted_count, _ = queryset.delete()
 
         return Response(
-            {'message': f'成功删除 {deleted_count} 名学生。'},
+            {'message': f'成功删除 {deleted_count} 名学生及其所有活动关联数据。'},
             status=status.HTTP_200_OK
         )
-
 
 
 class MajorListView(generics.ListAPIView):
@@ -493,51 +655,113 @@ class MajorListView(generics.ListAPIView):
     serializer_class = MajorSerializer
 
 
-
-
 class MutualSelectionEventViewSet(viewsets.ModelViewSet):
     """
-    互选活动管理视图集。
-    支持:
-    - 搜索: 根据活动名称 (`event_name`) 搜索。
-    - 筛选: 根据时间范围进行筛选 (例如: ?start_time_after=...&end_time_before=...)。
-    - 完整 CRUD 操作。
-    - 批量删除。
+    ✅ 修正：互选活动管理视图集，完善多活动支持
     """
-    # 预取相关对象以优化查询性能
     queryset = MutualSelectionEvent.objects.prefetch_related(
         'teachers', 'students__major'
     ).annotate(
         teacher_count=Count('teachers', distinct=True),
         student_count=Count('students', distinct=True)
-    ).all().order_by('-start_time')
+    ).all().order_by('-stu_start_time')
 
-    # 配置搜索和筛选
     filter_backends = [filters.SearchFilter, DjangoFilterBackend]
     search_fields = ['event_name']
     filterset_fields = {
-        'start_time': ['gte', 'lte'],  # 例如: ?start_time__gte=YYYY-MM-DD
-        'end_time': ['gte', 'lte'],    # 例如: ?end_time__lte=YYYY-MM-DD
+        'stu_start_time': ['gte', 'lte'], 'stu_end_time': ['gte', 'lte'],
+        'tea_start_time': ['gte', 'lte'], 'tea_end_time': ['gte', 'lte'],
     }
 
     def get_serializer_class(self):
-        """
-        根据不同的操作返回不同的序列化器。
-        - 列表/详情视图使用只读、信息丰富的序列化器。
-        - 创建/更新视图使用可写的序列化器。
-        """
         if self.action in ['list', 'retrieve']:
             return MutualSelectionEventListSerializer
         return MutualSelectionEventSerializer
 
+    @transaction.atomic
+    def update(self, request, *args, **kwargs):
+        """
+        ✅ 修正：重写 update 方法，安全地处理参与者列表的变更（多活动场景）
+        """
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+
+        # 1. 获取更新前的学生和教师ID集合
+        original_student_ids = set(instance.students.values_list('pk', flat=True))
+        original_teacher_ids = set(instance.teachers.values_list('pk', flat=True))
+
+        # 2. 调用序列化器进行常规验证和更新
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        instance.refresh_from_db()
+
+        # 3. 获取更新后的学生和教师ID集合
+        current_student_ids = set(instance.students.values_list('pk', flat=True))
+        current_teacher_ids = set(instance.teachers.values_list('pk', flat=True))
+
+        # 4. 处理被移除的学生
+        removed_student_ids = original_student_ids - current_student_ids
+        if removed_student_ids:
+            # ✅ 只影响当前活动的数据
+            memberships_to_delete = GroupMembership.objects.filter(
+                group__event=instance,
+                student_id__in=removed_student_ids
+            )
+
+            # 检查这些学生是否在当前活动中担任队长
+            for student_id in removed_student_ids:
+                try:
+                    group = Group.objects.get(captain_id=student_id, event=instance)
+                    if group.members.count() > 1:
+                        # 团队有多人，将队长置空
+                        group.captain = None
+                        group.save()
+                    else:
+                        # 团队只有队长一人，删除团队
+                        group.delete()
+                except Group.DoesNotExist:
+                    pass
+
+            # 删除成员关系
+            memberships_to_delete.delete()
+
+        # 5. 处理被移除的教师
+        removed_teacher_ids = original_teacher_ids - current_teacher_ids
+        if removed_teacher_ids:
+            # ✅ 只影响当前活动的数据
+            Group.objects.filter(event=instance, preferred_advisor_1_id__in=removed_teacher_ids).update(
+                preferred_advisor_1=None)
+            Group.objects.filter(event=instance, preferred_advisor_2_id__in=removed_teacher_ids).update(
+                preferred_advisor_2=None)
+            Group.objects.filter(event=instance, preferred_advisor_3_id__in=removed_teacher_ids).update(
+                preferred_advisor_3=None)
+            Group.objects.filter(event=instance, advisor_id__in=removed_teacher_ids).update(advisor=None)
+
+        return Response(self.get_serializer(instance).data)
+
+    @transaction.atomic
+    def destroy(self, request, *args, **kwargs):
+        """
+        ✅ 修正：删除活动前，先删除该活动下的所有团队（多活动隔离）
+        """
+        instance = self.get_object()
+
+        # ✅ 只删除当前活动的团队
+        Group.objects.filter(event=instance).delete()
+
+        self.perform_destroy(instance)
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
     @action(detail=False, methods=['post'], url_path='bulk-delete')
+    @transaction.atomic
     def bulk_delete(self, request, *args, **kwargs):
         """
-        根据提供的活动ID列表，批量删除互选活动。
-        请求体格式: { "ids": [1, 2, 3] }
+        ✅ 修正：批量删除活动，确保关联的团队也被一并删除（多活动隔离）
         """
         event_ids = request.data.get('ids')
-
         if not isinstance(event_ids, list) or not event_ids:
             return Response(
                 {'error': '请求体中必须包含一个非空的 "ids" 列表。'},
@@ -545,28 +769,88 @@ class MutualSelectionEventViewSet(viewsets.ModelViewSet):
             )
 
         queryset = self.get_queryset().filter(event_id__in=event_ids)
+
+        # ✅ 只删除这些活动的团队
+        Group.objects.filter(event__in=queryset).delete()
+
         deleted_count, _ = queryset.delete()
 
         return Response(
-            {'message': f'成功删除 {deleted_count} 个互选活动。'},
+            {'message': f'成功删除 {deleted_count} 个互选活动及其所有关联团队。'},
             status=status.HTTP_200_OK
         )
 
-    @action(detail=True, methods=['post'], url_path='auto-assign')
-    def auto_assign(self, request, *args, **kwargs):
+    @action(detail=True, methods=['get'], url_path='statistics')
+    def statistics(self, request, pk=None):
         """
-        对单个已过期的互选活动执行自动分配的占位符接口。
+        ✅ 新增：获取单个活动的统计信息
         """
         event = self.get_object()
 
-        # 简单检查活动是否结束
-        if event.end_time > timezone.now():
-            return Response({'error': '该活动尚未结束，不能进行自动分配。'}, status=400)
+        # 统计数据
+        total_students = event.students.count()
+        total_teachers = event.teachers.count()
+        total_groups = Group.objects.filter(event=event).count()
 
-        # 返回一个模拟的成功响应
+        # 统计已组队学生
+        grouped_student_ids = GroupMembership.objects.filter(
+            group__event=event
+        ).values_list('student_id', flat=True).distinct()
+        grouped_students_count = len(grouped_student_ids)
+
+        # 统计已分配导师的团队
+        assigned_groups_count = Group.objects.filter(event=event, advisor__isnull=False).count()
+
         return Response({
-            'message': '自动分配功能尚未实现，但接口已通。',
-            'assigned_count': 0,
-            'unassigned_count': len(event.students.all()),
-            'unassigned_students': [{'stu_name': s.stu_name} for s in event.students.all()],
-        }, status=200)
+            'event_id': event.event_id,
+            'event_name': event.event_name,
+            'total_students': total_students,
+            'total_teachers': total_teachers,
+            'total_groups': total_groups,
+            'grouped_students_count': grouped_students_count,
+            'ungrouped_students_count': total_students - grouped_students_count,
+            'assigned_groups_count': assigned_groups_count,
+            'unassigned_groups_count': total_groups - assigned_groups_count,
+        })
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def refresh_admin_token(request):
+    """管理员Token刷新接口"""
+    refresh_token = request.data.get('refresh')
+
+    if not refresh_token:
+        return Response(
+            {'error': '需要提供refresh token'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        refresh = RefreshToken(refresh_token)
+
+        # 验证是否是管理员的token
+        if refresh.get('user_type') != 'admin':
+            return Response(
+                {'error': '用户类型不匹配'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        # ✅ 生成新的access token（不再使用黑名单）
+        new_access_token = str(refresh.access_token)
+
+        return Response({
+            'access': new_access_token,
+            # 注意：不返回新的refresh token，继续使用旧的
+        }, status=status.HTTP_200_OK)
+
+    except TokenError as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+    except Exception as e:
+        return Response(
+            {'error': '刷新token失败'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

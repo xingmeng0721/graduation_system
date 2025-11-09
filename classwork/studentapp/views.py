@@ -8,6 +8,12 @@ from .models import Student, EmailVerifyCode
 from .serializers import StudentLoginSerializer, StudentProfileSerializer
 from django.core.mail import send_mail
 from classwork import settings
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import TokenError
 
 
 class StudentLoginView(views.APIView):
@@ -21,21 +27,29 @@ class StudentLoginView(views.APIView):
         stu_no = serializer.validated_data.get('stu_no')
         password = serializer.validated_data.get('password')
 
-        user = authenticate(request, username=stu_no, password=password)
 
-        if user and isinstance(user, Student):
-            # --- 关键：为学生用户也加入身份标识 ---
-            # for_user 会自动处理 user_id
-            refresh = RefreshToken.for_user(user)
-            refresh['user_type'] = 'student'
-            # --- 结束 ---
+        try:
+            student = Student.objects.get(stu_no=stu_no)
+        except Student.DoesNotExist:
+            return Response(
+                {'detail': '学号或密码错误。'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
 
-            return Response({
-                'refresh': str(refresh),
-                'access': str(refresh.access_token),
-            }, status=status.HTTP_200_OK)
-        else:
-            return Response({'detail': '学号或密码错误。'}, status=status.HTTP_401_UNAUTHORIZED)
+        if not student.check_password(password):
+            return Response(
+                {'detail': '学号或密码错误。'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        refresh = RefreshToken()
+        refresh['user_id'] = student.stu_id
+        refresh['user_type'] = 'student'
+
+        return Response({
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+        }, status=status.HTTP_200_OK)
 
 class SendResetCodeView(views.APIView):
     """发送重置密码验证码（邮箱 + 姓名验证）"""
@@ -133,6 +147,47 @@ class StudentProfileView(views.APIView):
         serializer.save()
 
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def refresh_student_token(request):
+    """学生Token刷新接口"""
+    refresh_token = request.data.get('refresh')
+
+    if not refresh_token:
+        return Response(
+            {'error': '需要提供refresh token'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        refresh = RefreshToken(refresh_token)
+
+        # 验证是否是学生的token
+        if refresh.get('user_type') != 'student':
+            return Response(
+                {'error': '用户类型不匹配'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        # ✅ 生成新的access token
+        new_access_token = str(refresh.access_token)
+
+        return Response({
+            'access': new_access_token,
+        }, status=status.HTTP_200_OK)
+
+    except TokenError as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+    except Exception as e:
+        return Response(
+            {'error': '刷新token失败'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
 

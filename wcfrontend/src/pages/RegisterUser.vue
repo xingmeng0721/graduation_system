@@ -1,276 +1,362 @@
 <template>
-  <div>
-    <h1>注册新用户</h1>
+  <div class="page-container">
+    <div class="page-header">
+      <h2>注册新用户</h2>
+    </div>
+
     <div class="register-container">
       <!-- 单用户注册 -->
-      <div class="register-card">
-        <h2>手动添加用户</h2>
-        <form @submit.prevent="handleRegister">
-          <div class="form-group">
-            <label for="name">名称</label>
-            <input type="text" id="name" v-model="admin_name" required>
+      <el-card class="register-card" shadow="never">
+        <template #header>
+          <div class="card-header">
+            <span>手动添加用户</span>
           </div>
-          <div class="form-group">
-            <label for="username">用户名</label>
-            <input type="text" id="username" v-model="admin_username" required>
-          </div>
-          <div class="form-group">
-            <label for="password">密码</label>
-            <input type="password" id="password" v-model="password" required>
-          </div>
-          <div v-if="error" class="error-message">{{ error }}</div>
-          <div v-if="successMessage" class="success-message">{{ successMessage }}</div>
-          <button type="submit" class="btn-submit">添加用户</button>
-        </form>
-      </div>
+        </template>
+
+        <el-form
+          ref="registerFormRef"
+          :model="registerForm"
+          label-width="80px"
+          @submit.prevent="handleRegister"
+        >
+          <el-form-item label="名称">
+            <el-input
+              v-model="registerForm.admin_name"
+              placeholder="请输入管理员名称"
+              clearable
+            />
+          </el-form-item>
+
+          <el-form-item label="用户名">
+            <el-input
+              v-model="registerForm.admin_username"
+              placeholder="请输入用户名"
+              clearable
+            />
+          </el-form-item>
+
+          <el-form-item label="密码">
+            <el-input
+              v-model="registerForm.password"
+              type="password"
+              placeholder="请输入密码"
+              show-password
+            />
+          </el-form-item>
+
+          <el-alert
+            v-if="error"
+            :title="error"
+            type="error"
+            :closable="false"
+            class="form-alert"
+          />
+
+          <el-alert
+            v-if="successMessage"
+            :title="successMessage"
+            type="success"
+            :closable="false"
+            class="form-alert"
+          />
+
+          <el-button
+            type="primary"
+            native-type="submit"
+            :loading="isSubmitting"
+            style="width: 100%"
+          >
+            添加用户
+          </el-button>
+        </el-form>
+      </el-card>
 
       <!-- 批量注册 -->
-      <div class="register-card">
-        <h2>通过 Excel 批量添加</h2>
-        <p class="description">下载模板，填写后上传。</p>
-       <button @click="handleDownloadTemplate" class="btn-secondary">下载模板</button>
-        <div class="upload-area" @click="triggerFileUpload">
-          <input type="file" ref="fileInput" @change="handleFileChange" accept=".xlsx, .xls" style="display: none;" />
-          <p v-if="!selectedFile">点击或拖拽文件上传</p>
-          <p v-else>已选择: {{ selectedFile.name }}</p>
+      <el-card class="register-card" shadow="never">
+        <template #header>
+          <div class="card-header">
+            <span>通过 Excel 批量添加</span>
+          </div>
+        </template>
+
+        <div class="bulk-register-content">
+          <p class="description">下载模板，填写后上传</p>
+
+          <el-button
+            @click="handleDownloadTemplate"
+            style="width: 100%; margin-bottom: 20px"
+          >
+            下载模板
+          </el-button>
+
+          <el-upload
+            ref="uploadRef"
+            class="upload-area"
+            drag
+            :auto-upload="false"
+            :limit="1"
+            accept=".xlsx,.xls"
+            :on-change="handleFileChange"
+            :on-exceed="handleExceed"
+            :file-list="fileList"
+          >
+            <el-icon class="upload-icon">
+              <Upload />
+            </el-icon>
+            <div class="upload-text">
+              <p>点击或拖拽文件到此处上传</p>
+              <p class="upload-hint">支持 .xlsx, .xls 格式</p>
+            </div>
+          </el-upload>
+
+          <el-alert
+            v-if="bulkError"
+            :title="bulkError"
+            type="error"
+            :closable="false"
+            class="form-alert"
+          />
+
+          <el-alert
+            v-if="bulkSuccessMessage"
+            :title="bulkSuccessMessage"
+            type="success"
+            :closable="false"
+            class="form-alert"
+          />
+
+          <el-button
+            type="primary"
+            @click="handleBulkRegister"
+            :disabled="fileList.length === 0"
+            :loading="isUploading"
+            style="width: 100%"
+          >
+            上传并注册
+          </el-button>
         </div>
-        <div v-if="bulkError" class="error-message">{{ bulkError }}</div>
-        <div v-if="bulkSuccessMessage" class="success-message">{{ bulkSuccessMessage }}</div>
-        <button @click="handleBulkRegister" class="btn-submit" :disabled="!selectedFile">上传并注册</button>
-      </div>
+      </el-card>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
-import api from '../services/api';
+import { ref, reactive } from 'vue'
+import { ElMessage } from 'element-plus'
+import { Upload } from '@element-plus/icons-vue'
+import api from '../services/api'
 
-// --- 单用户注册逻辑 ---
-const admin_name = ref('');
-const admin_username = ref('');
-const password = ref('');
-const error = ref(null);
-const successMessage = ref(null);
+// 单用户注册
+const registerFormRef = ref(null)
+const registerForm = reactive({
+  admin_name: '',
+  admin_username: '',
+  password: ''
+})
+const error = ref(null)
+const successMessage = ref(null)
+const isSubmitting = ref(false)
 
 const handleRegister = async () => {
-    error.value = null;
-    successMessage.value = null;
-    try {
-        await api.register({
-            admin_name: admin_name.value,
-            admin_username: admin_username.value,
-            admin_password: password.value
-        });
-        successMessage.value = '用户添加成功！';
-        // 成功后清空表单
-        admin_name.value = '';
-        admin_username.value = '';
-        password.value = '';
-    } catch (err) {
-        successMessage.value = null;
-        if (err.response && err.response.data) {
-          const backendErrors = err.response.data;
-          let errorMessage = '';
-          for (const field in backendErrors) {
-            errorMessage += `${field}: ${backendErrors[field].join(', ')} `;
-          }
-          error.value = errorMessage || '添加失败，请检查输入。';
-        } else {
-            error.value = '发生网络错误或未知问题。';
-        }
-        console.error('Register failed:', err);
-    }
-};
+  if (!registerForm.admin_name || !registerForm.admin_username || !registerForm.password) {
+    error.value = '请填写完整信息'
+    return
+  }
 
-// --- 批量注册逻辑 ---
-const fileInput = ref(null);
-const selectedFile = ref(null);
-const bulkError = ref(null);
-const bulkSuccessMessage = ref(null);
+  error.value = null
+  successMessage.value = null
+  isSubmitting.value = true
+
+  try {
+    await api.register({
+      admin_name: registerForm.admin_name,
+      admin_username: registerForm.admin_username,
+      admin_password: registerForm.password
+    })
+
+    successMessage.value = '用户添加成功！'
+    ElMessage.success('用户添加成功！')
+
+    // 清空表单
+    registerForm.admin_name = ''
+    registerForm.admin_username = ''
+    registerForm.password = ''
+  } catch (err) {
+    successMessage.value = null
+    if (err.response && err.response.data) {
+      const backendErrors = err.response.data
+      let errorMessage = ''
+      for (const field in backendErrors) {
+        errorMessage += `${field}: ${backendErrors[field].join(', ')} `
+      }
+      error.value = errorMessage || '添加失败，请检查输入'
+    } else {
+      error.value = '发生网络错误或未知问题'
+    }
+    console.error('Register failed:', err)
+  } finally {
+    isSubmitting.value = false
+  }
+}
+
+// 批量注册
+const uploadRef = ref(null)
+const fileList = ref([])
+const bulkError = ref(null)
+const bulkSuccessMessage = ref(null)
+const isUploading = ref(false)
 
 const handleDownloadTemplate = async () => {
-  bulkError.value = null;
-  bulkSuccessMessage.value = null;
+  bulkError.value = null
+  bulkSuccessMessage.value = null
+
   try {
-    // 1. 调用我们新的API方法，这将通过axios发起一个带Token的请求
-    const response = await api.downloadTemplate();
+    const response = await api.downloadTemplate()
+    const url = window.URL.createObjectURL(new Blob([response.data]))
+    const link = document.createElement('a')
+    link.href = url
 
-    // 2. 创建一个指向返回的Blob数据的URL
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-
-    // 3. 创建一个临时的 <a> 标签来触发下载
-    const link = document.createElement('a');
-    link.href = url;
-
-    // 尝试从响应头中获取文件名，否则使用默认名
-    const contentDisposition = response.headers['content-disposition'];
-    let filename = 'bulk_register_template.xlsx'; // 默认文件名
+    const contentDisposition = response.headers['content-disposition']
+    let filename = 'bulk_register_template.xlsx'
     if (contentDisposition) {
-      const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+      const filenameMatch = contentDisposition.match(/filename="(.+)"/)
       if (filenameMatch && filenameMatch.length > 1) {
-        filename = filenameMatch[1];
+        filename = filenameMatch[1]
       }
     }
-    link.setAttribute('download', filename);
+    link.setAttribute('download', filename)
 
-    // 4. 模拟点击并清理
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
 
+    ElMessage.success('模板下载成功')
   } catch (error) {
-    console.error('Failed to download template:', error);
-    bulkError.value = '模板下载失败，请稍后重试。';
+    console.error('Failed to download template:', error)
+    bulkError.value = '模板下载失败，请稍后重试'
+    ElMessage.error('模板下载失败')
   }
-};
+}
 
+const handleFileChange = (file, files) => {
+  fileList.value = files
+  bulkError.value = null
+  bulkSuccessMessage.value = null
+}
 
-const triggerFileUpload = () => {
-    fileInput.value.click();
-};
-
-const handleFileChange = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-        selectedFile.value = file;
-        bulkError.value = null;
-        bulkSuccessMessage.value = null;
-    }
-};
+const handleExceed = () => {
+  ElMessage.warning('只能上传一个文件')
+}
 
 const handleBulkRegister = async () => {
-    if (!selectedFile.value) {
-      bulkError.value = "请先选择一个文件。";
-      return;
-    }
-  bulkError.value = null;
-  bulkSuccessMessage.value = '正在上传处理中...';
-  try {
-    const response = await api.bulkRegister(selectedFile.value);
-    bulkSuccessMessage.value = response.data.message;
-    selectedFile.value = null;
-    if (fileInput.value) {
-      fileInput.value.value = ''; // 清空<input>的值，以便可以再次上传同名文件
-    }
-  } catch (err) {
-    bulkSuccessMessage.value = null;
-    if (err.response && err.response.data && err.response.data.error) {
-      bulkError.value = err.response.data.error;
-    } else {
-      bulkError.value = '上传失败，发生未知错误。';
-    }
-    console.error('Bulk register failed:', err);
+  if (fileList.value.length === 0) {
+    bulkError.value = '请先选择一个文件'
+    return
   }
-};
+
+  bulkError.value = null
+  bulkSuccessMessage.value = null
+  isUploading.value = true
+
+  try {
+    const response = await api.bulkRegister(fileList.value[0].raw)
+    bulkSuccessMessage.value = response.data.message
+    ElMessage.success(response.data.message)
+
+    // 清空文件列表
+    fileList.value = []
+    uploadRef.value.clearFiles()
+  } catch (err) {
+    if (err.response && err.response.data && err.response.data.error) {
+      bulkError.value = err.response.data.error
+    } else {
+      bulkError.value = '上传失败，发生未知错误'
+    }
+    ElMessage.error(bulkError.value)
+    console.error('Bulk register failed:', err)
+  } finally {
+    isUploading.value = false
+  }
+}
 </script>
 
 <style scoped>
+.page-container {
+  max-width: 1400px;
+}
+
+.page-header {
+  margin-bottom: 20px;
+}
+
+.page-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #303133;
+}
+
 .register-container {
-  display: flex;
-  gap: 40px;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+  gap: 20px;
 }
 
 .register-card {
-  flex: 1;
-  min-width: 350px;
-  padding: 30px;
-  background: white;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-h1 {
-  margin-bottom: 20px;
+.card-header {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
 }
 
-h2 {
-  margin-bottom: 20px;
-  text-align: center;
+.bulk-register-content {
+  display: flex;
+  flex-direction: column;
 }
 
 .description {
+  text-align: center;
+  color: #606266;
+  margin-bottom: 20px;
   font-size: 14px;
-  color: #666;
-  margin-bottom: 20px;
-  text-align: center;
-}
-
-.btn-secondary {
-  display: block;
-  text-align: center;
-  padding: 12px;
-  background-color: #6c757d;
-  color: white;
-  border-radius: 4px;
-  text-decoration: none;
-  margin-bottom: 20px;
-}
-
-.btn-secondary:hover {
-  background-color: #5a6268;
 }
 
 .upload-area {
-  border: 2px dashed #ccc;
-  border-radius: 8px;
-  padding: 40px;
-  text-align: center;
-  cursor: pointer;
   margin-bottom: 20px;
 }
 
-.upload-area:hover {
-  border-color: #007bff;
-}
-
-.form-group {
+.upload-icon {
+  font-size: 60px;
+  color: #c0c4cc;
   margin-bottom: 16px;
 }
 
-label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 600;
+.upload-text {
+  color: #606266;
 }
 
-input {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  box-sizing: border-box;
+.upload-text p {
+  margin: 0;
+  line-height: 1.8;
 }
 
-.btn-submit {
-  width: 100%;
-  padding: 12px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 16px;
-  margin-top: 10px;
+.upload-hint {
+  font-size: 12px;
+  color: #909399;
 }
 
-.btn-submit:disabled {
-  background-color: #a0cffa;
-  cursor: not-allowed;
+.form-alert {
+  margin-bottom: 16px;
 }
 
-.error-message {
-  color: #dc3545;
-  margin-bottom: 15px;
-  text-align: center;
-  word-break: break-all;
-}
-
-.success-message {
-  color: #28a745;
-  margin-bottom: 15px;
-  text-align: center;
+/* 响应式 */
+@media (max-width: 1024px) {
+  .register-container {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

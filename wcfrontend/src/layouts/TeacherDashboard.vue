@@ -1,46 +1,197 @@
 <template>
-  <div class="dashboard-layout">
-    <aside class="sidebar">
+  <el-container class="dashboard-container">
+    <!-- 侧边栏 -->
+    <el-aside :width="isCollapse ? '64px' : '240px'" class="sidebar">
       <div class="sidebar-header">
-        <h3>教师仪表盘</h3>
+        <h3 v-if="!isCollapse">教师仪表盘</h3>
+        <span v-else class="header-icon">教</span>
       </div>
-      <nav class="sidebar-nav">
-        <router-link to="/teacher/profile" class="nav-item">个人信息</router-link>
-        <!-- 未来可以添加更多导航项 -->
-        <!-- <router-link to="/teacher/courses" class="nav-item">我的课程</router-link> -->
-      </nav>
+
+      <el-menu
+        :default-active="activeMenu"
+        :collapse="isCollapse"
+        :collapse-transition="false"
+        router
+        class="sidebar-menu"
+      >
+        <el-menu-item index="/teacher/dashboard/profile">
+          <el-icon><User /></el-icon>
+          <template #title>个人信息</template>
+        </el-menu-item>
+
+        <el-menu-item index="/teacher/dashboard/select-team">
+          <el-icon><UserFilled /></el-icon>
+          <template #title>选择指导团队</template>
+        </el-menu-item>
+
+        <el-menu-item index="/teacher/dashboard/history">
+          <el-icon><Document /></el-icon>
+          <template #title>历史活动结果</template>
+        </el-menu-item>
+      </el-menu>
+
       <div class="sidebar-footer">
-        <button @click="logout" class="logout-button">退出登录</button>
+        <el-button
+          type="danger"
+          :icon="SwitchButton"
+          @click="handleLogout"
+          :class="{ 'collapse-btn': isCollapse }"
+        >
+          <span v-if="!isCollapse">退出登录</span>
+        </el-button>
       </div>
-    </aside>
-    <main class="main-content">
-      <router-view />
-    </main>
-  </div>
+    </el-aside>
+
+    <!-- 主内容区 -->
+    <el-container class="main-container">
+      <!-- 顶部工具栏 -->
+      <el-header class="header">
+        <el-button
+          circle
+          :icon="isCollapse ? Expand : Fold"
+          @click="toggleCollapse"
+        />
+        <div class="header-title">{{ pageTitle }}</div>
+      </el-header>
+
+      <el-main class="main-content">
+        <router-view />
+      </el-main>
+    </el-container>
+  </el-container>
 </template>
 
 <script setup>
-import { useRouter } from 'vue-router';
+import { ref, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { ElMessageBox, ElMessage } from 'element-plus'
+import {
+  User, UserFilled, Document,
+  Fold, Expand, SwitchButton
+} from '@element-plus/icons-vue'
 
-const router = useRouter();
+const router = useRouter()
+const route = useRoute()
 
-const logout = () => {
-  // 清除教师相关的 token
-  localStorage.removeItem('teacherAccessToken');
-  localStorage.removeItem('teacherRefreshToken');
-  // 跳转到登录页面
-  router.push('/login');
-};
+const isCollapse = ref(false)
+
+const activeMenu = computed(() => route.path)
+
+const pageTitleMap = {
+  '/teacher/dashboard/profile': '个人信息',
+  '/teacher/dashboard/select-team': '选择指导团队',
+  '/teacher/dashboard/history': '历史活动结果'
+}
+
+const pageTitle = computed(() => pageTitleMap[route.path] || '教师仪表盘')
+
+const toggleCollapse = () => {
+  isCollapse.value = !isCollapse.value
+}
+
+const handleLogout = async () => {
+  try {
+    await ElMessageBox.confirm('确定要退出登录吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+
+    localStorage.removeItem('teacherAccessToken')
+    localStorage.removeItem('teacherRefreshToken')
+    ElMessage.success('已退出登录')
+    router.push('/login')
+  } catch {
+    // 用户取消
+  }
+}
 </script>
 
 <style scoped>
-.dashboard-layout { display: flex; height: 100vh; background-color: #f7f8fc; }
-.sidebar { width: 240px; background-color: #343a40; color: #fff; display: flex; flex-direction: column; }
-.sidebar-header { padding: 20px; text-align: center; border-bottom: 1px solid #495057; }
-.sidebar-nav { flex-grow: 1; padding: 20px 0; }
-.nav-item { display: block; padding: 12px 20px; color: #ced4da; text-decoration: none; transition: background-color 0.2s, color 0.2s; }
-.nav-item:hover, .router-link-exact-active { background-color: #495057; color: #fff; }
-.sidebar-footer { padding: 20px; border-top: 1px solid #495057; }
-.logout-button { width: 100%; padding: 10px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; }
-.main-content { flex-grow: 1; padding: 40px; overflow-y: auto; }
+.dashboard-container {
+  height: 100vh;
+}
+
+.sidebar {
+  background-color: #2c3e50;
+  display: flex;
+  flex-direction: column;
+  transition: width 0.3s;
+}
+
+.sidebar-header {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.sidebar-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.header-icon {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.sidebar-menu {
+  flex: 1;
+  border-right: none;
+  background-color: #2c3e50;
+}
+
+.sidebar-menu :deep(.el-menu-item) {
+  color: #bdc3c7;
+}
+
+.sidebar-menu :deep(.el-menu-item:hover) {
+  background-color: #34495e;
+  color: #fff;
+}
+
+.sidebar-menu :deep(.el-menu-item.is-active) {
+  background-color: #409eff;
+  color: #fff;
+}
+
+.sidebar-footer {
+  padding: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-footer .el-button {
+  width: 100%;
+}
+
+.collapse-btn {
+  padding: 12px;
+}
+
+.main-container {
+  background-color: #f5f7fa;
+}
+
+.header {
+  background-color: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 20px;
+}
+
+.header-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.main-content {
+  padding: 20px;
+}
 </style>

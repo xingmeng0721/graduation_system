@@ -4,7 +4,12 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="5a3f43bc-5135-4223-8a01-96f06d2dbf59" name="更改" comment="第一二版" />
+    <list default="true" id="5a3f43bc-5135-4223-8a01-96f06d2dbf59" name="更改" comment="应该是最终版了吧">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/environment.yml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wcfrontend/vite.config.js" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/vite.config.js" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -26,13 +31,18 @@
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
+        <option value="Python Script" />
         <option value="JavaScript File" />
         <option value="Vue Composition API Component" />
-        <option value="Python Script" />
       </list>
     </option>
   </component>
   <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="master" />
+      </map>
+    </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="GitHubPullRequestSearchHistory">{
@@ -70,7 +80,8 @@
     &quot;RunOnceActivity.OpenDjangoStructureViewOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;1&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
     &quot;last_opened_file_path&quot;: &quot;D:/DjangoProject/django/wcfrontend/src/pages&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
@@ -78,7 +89,7 @@
     &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
     &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
     &quot;npm.dev.executor&quot;: &quot;Run&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;com.intellij.python.django.customization.DjangoModulesConfigurable&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
     &quot;ts.external.directory.path&quot;: &quot;D:\\PyCharm 2024.3\\plugins\\javascript-plugin\\jsLanguageServicesImpl\\external&quot;,
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   },
@@ -165,7 +176,15 @@
       <workItem from="1761512367548" duration="22547000" />
       <workItem from="1761536343809" duration="4936000" />
       <workItem from="1761563476381" duration="15462000" />
-      <workItem from="1761583576962" duration="2647000" />
+      <workItem from="1761583576962" duration="2911000" />
+      <workItem from="1761645458921" duration="88000" />
+      <workItem from="1761720754854" duration="6363000" />
+      <workItem from="1762089798003" duration="28843000" />
+      <workItem from="1762229339755" duration="1862000" />
+      <workItem from="1762269917372" duration="368000" />
+      <workItem from="1762324112176" duration="5745000" />
+      <workItem from="1762340893264" duration="12774000" />
+      <workItem from="1762398392751" duration="1230000" />
     </task>
     <task id="LOCAL-00001" summary="第一版">
       <option name="closed" value="true" />
@@ -199,7 +218,95 @@
       <option name="project" value="LOCAL" />
       <updated>1761645177281</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="第一二版">
+      <option name="closed" value="true" />
+      <created>1761645342491</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1761645342491</updated>
+    </task>
+    <task id="LOCAL-00006" summary="第一二版">
+      <option name="closed" value="true" />
+      <created>1762093211946</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1762093211946</updated>
+    </task>
+    <task id="LOCAL-00007" summary="6">
+      <option name="closed" value="true" />
+      <created>1762112410382</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1762112410382</updated>
+    </task>
+    <task id="LOCAL-00008" summary="2">
+      <option name="closed" value="true" />
+      <created>1762120695024</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1762120695024</updated>
+    </task>
+    <task id="LOCAL-00009" summary="2">
+      <option name="closed" value="true" />
+      <created>1762269456960</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1762269456960</updated>
+    </task>
+    <task id="LOCAL-00010" summary="自动分配算法完善后，多活动bug">
+      <option name="closed" value="true" />
+      <created>1762344583092</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1762344583092</updated>
+    </task>
+    <task id="LOCAL-00011" summary="自动分配算法完善后，多活动bug">
+      <option name="closed" value="true" />
+      <created>1762345992004</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1762345992004</updated>
+    </task>
+    <task id="LOCAL-00012" summary="自动分配算法完善后，多活动bug">
+      <option name="closed" value="true" />
+      <created>1762394377807</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1762394377807</updated>
+    </task>
+    <task id="LOCAL-00013" summary="前端部分完善">
+      <option name="closed" value="true" />
+      <created>1762448493082</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1762448493082</updated>
+    </task>
+    <task id="LOCAL-00014" summary="前端完善">
+      <option name="closed" value="true" />
+      <created>1762455742162</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1762455742162</updated>
+    </task>
+    <task id="LOCAL-00015" summary="应该是最终版了吧">
+      <option name="closed" value="true" />
+      <created>1762459603576</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1762459603576</updated>
+    </task>
+    <option name="localTasksCounter" value="16" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -210,7 +317,19 @@
       <map>
         <entry key="MAIN">
           <value>
-            <State />
+            <State>
+              <option name="FILTERS">
+                <map>
+                  <entry key="branch">
+                    <value>
+                      <list>
+                        <option value="1" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+            </State>
           </value>
         </entry>
       </map>
@@ -219,7 +338,13 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="第一版" />
     <MESSAGE value="第一二版" />
-    <option name="LAST_COMMIT_MESSAGE" value="第一二版" />
+    <MESSAGE value="6" />
+    <MESSAGE value="2" />
+    <MESSAGE value="自动分配算法完善后，多活动bug" />
+    <MESSAGE value="前端部分完善" />
+    <MESSAGE value="前端完善" />
+    <MESSAGE value="应该是最终版了吧" />
+    <option name="LAST_COMMIT_MESSAGE" value="应该是最终版了吧" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -229,10 +354,25 @@
           <line>6</line>
           <option name="timeStamp" value="1" />
         </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/classwork/teamapp/models.py</url>
+          <option name="timeStamp" value="4" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/classwork/teamapp/views.py</url>
+          <line>1232</line>
+          <option name="timeStamp" value="8" />
+        </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/wcfrontend/src/pages/StudentManagement.vue</url>
-          <line>261</line>
+          <line>424</line>
           <option name="timeStamp" value="3" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="javascript">
+          <url>file://$PROJECT_DIR$/wcfrontend/src/pages/TeacherTeamSelection.vue</url>
+          <line>416</line>
+          <properties lambdaOrdinal="-1" />
+          <option name="timeStamp" value="9" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

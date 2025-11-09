@@ -1,18 +1,21 @@
 from django.urls import path, include
-from .views import RegisterView, LoginView, BulkRegisterView, DownloadTemplateView, AdminUserListView, MajorListView, TeacherManagementViewSet, MutualSelectionEventViewSet, BulkRegisterTeachersView,DownloadTeacherTemplateView
+from .views import RegisterView, LoginView, BulkRegisterView, DownloadTemplateView, MajorListView, TeacherManagementViewSet, MutualSelectionEventViewSet, BulkRegisterTeachersView,DownloadTeacherTemplateView
 from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework.routers import DefaultRouter
 from .views import (
     LoginView,
-    AdminUserListView,
+    AdminUserManagementViewSet,
+    AdminProfileView,
     StudentManagementViewSet,
     DownloadStudentTemplateView,
     BulkRegisterStudentsView,
+    refresh_admin_token,
 )
 
 router = DefaultRouter()
 router.register(r'students', StudentManagementViewSet, basename='student-management')
 router.register(r'teachers', TeacherManagementViewSet, basename='teacher-management')
+router.register(r'users', AdminUserManagementViewSet, basename='admin-user-management')
 
 mutual_selection_list = MutualSelectionEventViewSet.as_view({
     'get': 'list',    # GET 请求映射到 list 方法 (获取列表)
@@ -43,6 +46,10 @@ urlpatterns = [
     # 登录 API
     path('login/', LoginView.as_view(), name='login'),
 
+    path('token/refresh/', refresh_admin_token, name='admin_token_refresh'),
+
+    path('profile/', AdminProfileView.as_view(), name='admin-profile'),
+
     # simple-jwt 提供的用于刷新 access token 的接口
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
@@ -52,8 +59,6 @@ urlpatterns = [
     # 下载模板 API
     path('register/template/', DownloadTemplateView.as_view(), name='download-template'),
 
-    # 管理员查看用户列表 API
-    path('users/', AdminUserListView.as_view(), name='user-list'),
 
     path('teachers/register/bulk/', BulkRegisterTeachersView.as_view(), name='teacher-bulk-register'),
 

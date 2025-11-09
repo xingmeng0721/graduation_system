@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -23,9 +24,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "django-insecure-l@3xjbnmw3q3%n8h!63r-@rwuo+ohtb*z8b1$65g8nxng01b4%"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    '8.163.12.169',
+    'localhost',
+    '127.0.0.1',
+    '*', 
+]
 
 
 # Application definition
@@ -85,8 +91,36 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 SIMPLE_JWT = {
+    # Token有效期
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=10),  # ✅ Access Token 10分钟
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),  # ✅ Refresh Token 7天
+
+    'UPDATE_LAST_LOGIN': False,
+
+    # 算法和密钥
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'VERIFYING_KEY': None,
+    'AUDIENCE': None,
+    'ISSUER': None,
+    'JWK_URL': None,
+    'LEEWAY': 0,
+
+    # HTTP头配置
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
     'USER_ID_FIELD': 'pk',
     'USER_ID_CLAIM': 'user_id',
+
+    # Token类型
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'TOKEN_TYPE_CLAIM': 'token_type',
+    'TOKEN_USER_CLASS': 'rest_framework_simplejwt.models.TokenUser',
+
+    # Sliding Token (可选，不使用的话不影响)
+    'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
+    'SLIDING_TOKEN_LIFETIME': timedelta(minutes=10),
+    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=7),
 }
 
 
@@ -114,32 +148,32 @@ WSGI_APPLICATION = "classwork.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-# import pymysql
-# pymysql.install_as_MySQLdb()
-#
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.mysql',
-#         'NAME': 'graduation_system',
-#         'USER': 'gs',
-#         'PASSWORD': '123456',
-#         'HOST': '127.0.0.1',
-#         'PORT': '3306',
-#     }
-# }
+import pymysql
+pymysql.install_as_MySQLdb()
+
 DATABASES = {
     'default': {
-        'ENGINE': 'mssql',
-        'NAME': 'DB_2',
-        'USER': 'srz',
-        'PASSWORD': 'db_zsr',
-        'HOST': 'bzmtxh.top',
-        'PORT': '24133',
-        'OPTIONS': {
-            'driver': 'ODBC Driver 17 for SQL Server',
-        },
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'graduation_system',
+        'USER': 'gs',
+        'PASSWORD': '123456',
+        'HOST': '127.0.0.1',
+        'PORT': '3306',
     }
 }
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'mssql',
+#         'NAME': 'DB_2',
+#         'USER': 'srz',
+#         'PASSWORD': 'db_zsr',
+#         'HOST': 'bzmtxh.top',
+#         'PORT': '24133',
+#         'OPTIONS': {
+#             'driver': 'ODBC Driver 17 for SQL Server',
+#         },
+#     }
+# }
 
 
 # Password validation
@@ -166,17 +200,20 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = 'Asia/Shanghai'
+USE_TZ = True
 
 USE_I18N = True
 
-USE_TZ = True
+
+
 
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_URL = '/static/'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

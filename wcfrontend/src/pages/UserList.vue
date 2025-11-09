@@ -1,60 +1,133 @@
 <template>
-  <div>
-    <h1>管理员数据</h1>
-    <div v-if="loading" class="loading">正在加载...</div>
-    <div v-if="error" class="error-message">{{ error }}</div>
-    <table v-if="users.length > 0">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>名称</th>
-          <th>用户名</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="user in users" :key="user.admin_id">
-          <td>{{ user.admin_id }}</td>
-          <td>{{ user.admin_name }}</td>
-          <td>{{ user.admin_username }}</td>
-        </tr>
-      </tbody>
-    </table>
+  <div class="page-container">
+    <div class="page-header">
+      <h2>管理员列表</h2>
+      <div class="header-actions">
+        <el-button
+          type="danger"
+          :disabled="selectedUsers.length === 0"
+          @click="handleBulkDelete"
+        >
+          批量删除 ({{ selectedUsers.length }})
+        </el-button>
+      </div>
+    </div>
+
+    <el-table
+      :data="users"
+      @selection-change="handleSelectionChange"
+      v-loading="loading"
+    >
+      <el-table-column type="selection" width="55" />
+      <el-table-column prop="admin_username" label="用户名" />
+      <el-table-column prop="admin_name" label="姓名" />
+      <el-table-column label="操作" width="150">
+        <template #default="{ row }">
+          <el-button
+            type="danger"
+            size="small"
+            link
+            @click="handleDelete(row)"
+          >
+            删除
+          </el-button>
+        </template>
+      </el-table-column>
+    </el-table>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import api from '../services/api';
+import { ref, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import api from '../services/api'
 
-const users = ref([]);
-const loading = ref(true);
-const error = ref(null);
+const users = ref([])
+const selectedUsers = ref([])
+const loading = ref(false)
 
-onMounted(async () => {
+const fetchUsers = async () => {
+  loading.value = true
   try {
-    const response = await api.getUsers();
-    users.value = response.data;
-  } catch (err) {
-    error.value = "无法加载用户数据。";
-    console.error(err);
+    const response = await api.getUsers()  // ✅ 修改这里
+    users.value = response.data
+  } catch (error) {
+    ElMessage.error('获取管理员列表失败')
+    console.error(error)
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-});
+}
+
+const handleSelectionChange = (selection) => {
+  selectedUsers.value = selection
+}
+
+const handleDelete = async (user) => {
+  try {
+    await ElMessageBox.confirm(`确定要删除管理员 "${user.admin_name}" 吗？`, '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+
+    await api.deleteAdminUser(user.admin_id)
+    ElMessage.success('删除成功')
+    await fetchUsers()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.response?.data?.error || '删除失败')
+    }
+  }
+}
+
+const handleBulkDelete = async () => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除选中的 ${selectedUsers.value.length} 名管理员吗？`,
+      '批量删除确认',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+
+    const ids = selectedUsers.value.map(user => user.admin_id)
+    await api.bulkDeleteAdminUsers(ids)
+    ElMessage.success(`成功删除 ${selectedUsers.value.length} 名管理员`)
+    await fetchUsers()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.response?.data?.error || '批量删除失败')
+    }
+  }
+}
+
+onMounted(fetchUsers)
 </script>
 
 <style scoped>
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 20px;
+.page-container {
+  padding: 20px;
 }
-th, td {
-  border: 1px solid #ddd;
-  padding: 12px;
-  text-align: left;
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
 }
-th {
-  background-color: #f2f2f2;
+
+.page-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
 }
 </style>
