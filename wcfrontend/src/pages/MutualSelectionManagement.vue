@@ -143,18 +143,32 @@
         <el-divider content-position="left">参与人员</el-divider>
 
         <!-- 选择教师 -->
-        <el-form-item label="选择教师">
-          <div class="selection-toolbar">
-            <el-button size="small" @click="selectAllTeachers">全选</el-button>
-            <el-button size="small" @click="deselectAllTeachers">清空</el-button>
-            <el-tag type="info">已选择 {{ currentEvent.teachers.length }} 人</el-tag>
-          </div>
-          <AdvancedMultiSelect v-model="currentEvent.teachers" :items="teacherOptions" />
-        </el-form-item>
+      <el-form-item label="选择教师">
+        <div class="selection-toolbar">
+        <el-input
+        v-model="teacherSearch"
+        placeholder="搜索教师姓名或工号"
+        size="small"
+        clearable
+        style="width: 200px;"
+        />
+        <el-button size="small" @click="selectAllTeachers">全选</el-button>
+        <el-button size="small" @click="deselectAllTeachers">清空</el-button>
+        <el-tag type="info">已选择 {{ currentEvent.teachers.length }} 人</el-tag>
+        </div>
+        <AdvancedMultiSelect v-model="currentEvent.teachers" :items="filteredTeacherOptions" />
+      </el-form-item>
 
         <!-- 选择学生 -->
         <el-form-item label="选择学生">
           <div class="selection-toolbar">
+            <el-input
+              v-model="studentSearch"
+              placeholder="搜索学生姓名或学号"
+              size="small"
+              clearable
+              style="width: 200px;"
+            />
             <el-select
               v-model="studentGradeFilter"
               placeholder="所有年级"
@@ -187,7 +201,7 @@
             <el-button size="small" @click="deselectAllStudents">清空</el-button>
             <el-tag type="info">已选择 {{ currentEvent.students.length }} 人</el-tag>
           </div>
-          <AdvancedMultiSelect v-model="currentEvent.students" :items="studentOptions" />
+          <AdvancedMultiSelect v-model="currentEvent.students" :items="filteredStudentOptions" />
         </el-form-item>
       </el-form>
 
@@ -217,8 +231,25 @@ const allStudents = ref([])
 const allMajors = ref([])
 const studentGradeFilter = ref('')
 const studentMajorFilter = ref('')
+const teacherSearch = ref('')
+const studentSearch = ref('')
 
 // --- 计算属性 ---
+
+const filteredTeacherOptions = computed(() => {
+  return teacherOptions.value.filter(t =>
+    !teacherSearch.value ||
+    t.label.includes(teacherSearch.value.trim())
+  )
+})
+
+const filteredStudentOptions = computed(() => {
+  return studentOptions.value.filter(s =>
+    !studentSearch.value ||
+    s.label.includes(studentSearch.value.trim())
+  )
+})
+
 const busyTeacherIds = computed(() => {
   const busyIds = new Set()
   const eventIdToExclude = isEditing.value ? currentEvent.value.event_id : null

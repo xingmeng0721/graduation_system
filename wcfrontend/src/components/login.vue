@@ -101,10 +101,10 @@
         class="reset-form"
         @submit.prevent="handleSendCode"
       >
-        <el-form-item label="姓名">
+        <el-form-item label="学号">
           <el-input
-            v-model="resetInfo.stu_name"
-            placeholder="请输入您的姓名"
+            v-model="resetInfo.stu_no"
+            placeholder="请输入您的学号"
             clearable
           />
         </el-form-item>
@@ -210,7 +210,7 @@ const isLoading = ref(false)
 // 忘记密码弹窗状态
 const isForgotPasswordModalVisible = ref(false)
 const resetStep = ref(1)
-const resetInfo = ref({ stu_name: '', email: '', code: '', password: '' })
+const resetInfo = ref({ stu_no: '', email: '', code: '', password: '' })
 const resetError = ref(null)
 const isSendingCode = ref(false)
 const isResettingPassword = ref(false)
@@ -300,7 +300,7 @@ const handleLogin = async () => {
 const openForgotPasswordModal = () => {
   isForgotPasswordModalVisible.value = true
   resetStep.value = 1
-  resetInfo.value = { stu_name: '', email: '', code: '', password: '' }
+  resetInfo.value = { stu_no: '', email: '', code: '', password: '' }
   resetError.value = null
 }
 
@@ -312,8 +312,8 @@ const closeForgotPasswordModal = () => {
 
 // 发送验证码
 const handleSendCode = async () => {
-  if (!resetInfo.value.stu_name || !resetInfo.value.email) {
-    resetError.value = '请输入姓名和邮箱'
+  if (!resetInfo.value.stu_no || !resetInfo.value.email) {
+    resetError.value = '请输入学号和邮箱'
     return
   }
 
@@ -322,7 +322,7 @@ const handleSendCode = async () => {
 
   try {
     await api.sendStudentResetCode({
-      stu_name: resetInfo.value.stu_name,
+      stu_no: resetInfo.value.stu_no,
       email: resetInfo.value.email
     })
 
@@ -330,7 +330,7 @@ const handleSendCode = async () => {
     resetStep.value = 2
 
   } catch (err) {
-    resetError.value = err.response?.data?.error || '发送失败，请检查姓名和邮箱'
+    resetError.value = err.response?.data?.error || '发送失败，请检查学号和邮箱'
     console.error('Send code failed:', err)
   } finally {
     isSendingCode.value = false
@@ -352,7 +352,7 @@ const handleResetPassword = async () => {
 
     ElMessage.success('密码重置成功')
     closeForgotPasswordModal()
-    resetInfo.value = {stu_name: '', email: '', code: '', password: ''}
+    resetInfo.value = {stu_no: '', email: '', code: '', password: ''}
 
   } catch (err) {
     resetError.value = err.response?.data?.error || '重置失败，请检查验证码'
