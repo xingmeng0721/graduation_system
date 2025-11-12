@@ -377,4 +377,22 @@ export default {
   getGroups() {
     return apiClient.get(`${ADMIN_BASE}groups/`);
   },
+ // 【新增】获取活动管理详情（统计、未分组学生等）
+  getEventManagementInfo(eventId) {
+    return apiClient.get(`${TEAM_BASE}${eventId}/admin/management-info/`);
+  },
+  // 【新增】管理员强制创建团队
+  adminCreateGroup(data) {
+    return apiClient.post(`${TEAM_BASE}admin/create-group/`, data);
+  },
+
+  // 【新增】管理员强制更新团队
+  adminUpdateGroup(groupId, data) {
+    return apiClient.put(`${TEAM_BASE}${groupId}/admin/update-group/`, data);
+  },
+
+  // 【新增】管理员强制删除团队
+  adminDeleteGroup(groupId) {
+    return apiClient.delete(`${TEAM_BASE}${groupId}/admin/delete-group/`);
+  },
 };

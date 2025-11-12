@@ -67,6 +67,9 @@ class GroupDetailSerializer(serializers.ModelSerializer):
     event_id = serializers.IntegerField(source='event.event_id', read_only=True)
     member_count = serializers.SerializerMethodField()
 
+    student_preference_rank = serializers.IntegerField(read_only=True, required=False)
+    my_preference_rank = serializers.IntegerField(read_only=True, required=False)
+
     # ✅ 新增：项目简介截取版本
     project_description_short = serializers.SerializerMethodField()
 
@@ -76,7 +79,9 @@ class GroupDetailSerializer(serializers.ModelSerializer):
             'group_id', 'group_name', 'project_title', 'project_description',
             'project_description_short',  # ✅ 新增
             'event_id', 'event_name', 'captain', 'members', 'member_count',
-            'advisor', 'preferred_advisor_1', 'preferred_advisor_2', 'preferred_advisor_3'
+            'advisor', 'preferred_advisor_1', 'preferred_advisor_2', 'preferred_advisor_3',
+            'student_preference_rank',
+            'my_preference_rank'
         ]
 
     def get_members(self, obj):

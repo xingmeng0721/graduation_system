@@ -39,13 +39,17 @@ const routes = [
       {
         path: 'mutual-selection',
         name: 'MutualSelectionManagement',
-        // 使用动态导入（懒加载）
         component: () => import('../pages/MutualSelectionManagement.vue'),
       },
       {
-        path: 'auto-assignment',
-        name: 'AutoAssignment',
-        component: () => import('../pages/AutoAssignment.vue'),
+        path: 'group-management',
+        name: 'GroupManagement',
+        component: () => import('../pages/GroupManagement.vue'),
+      },
+      {
+        path: 'assignment-results',
+        name: 'AssignmentResults',
+        component: () => import('../pages/AssignmentResults.vue'),
       },
     ]
   },

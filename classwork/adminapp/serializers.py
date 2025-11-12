@@ -59,9 +59,17 @@ class TeacherManagementSerializer(serializers.ModelSerializer):
             'introduction': {'required': False, 'allow_blank': True},
         }
 
+
+
     def create(self, validated_data):
         user = teacher.objects.create_user(**validated_data)
         return user
+
+    def __init__(self, *args, **kwargs):
+        """让更新教师信息时 password 变为可选。"""
+        super().__init__(*args, **kwargs)
+        if self.instance:  # instance 存在说明是更新操作
+            self.fields['password'].required = False
 
     def update(self, instance, validated_data):
         password = validated_data.pop('password', None)
@@ -92,7 +100,7 @@ class StudentManagementSerializer(serializers.ModelSerializer):
         model = Student
         fields = ['stu_id', 'stu_no', 'stu_name', 'password', 'grade', 'phone', 'major','email']
         extra_kwargs = {
-            'password': {'write_only': True, 'required': True},
+            'password': {'write_only': True, 'required': False, 'allow_blank': True},
             'phone': {'required': False, 'allow_blank': True},
             'email': {'required': False, 'allow_blank': True}
         }
@@ -101,7 +109,16 @@ class StudentManagementSerializer(serializers.ModelSerializer):
         major_name = validated_data.pop('major')
         major_obj, created = Major.objects.get_or_create(major_name=major_name)
         validated_data['major'] = major_obj
-        student = Student.objects.create_user(**validated_data)
+        password = validated_data.pop('password', '').strip()
+        stu_no = validated_data.get('stu_no')
+        if not password:
+            if not stu_no or len(stu_no) < 3:
+                raise serializers.ValidationError({'stu_no': '学号长度不足3位，无法自动生成默认密码。'})
+            password = stu_no[-3:]
+
+        student = Student.objects.create(**validated_data)
+        student.set_password(password)
+        student.save()
         return student
 
     def update(self, instance, validated_data):

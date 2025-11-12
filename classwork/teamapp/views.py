@@ -4,7 +4,6 @@ from django.db.models import Case, When, Value, IntegerField, OuterRef, Subquery
 from rest_framework import status, viewsets, serializers
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 from adminapp.models import MutualSelectionEvent
 from studentapp.models import Student
 from teacherapp.models import teacher
@@ -89,7 +88,6 @@ class TeamViewSet(viewsets.GenericViewSet):
 
     @action(detail=False, methods=['get'], url_path='dashboard')
     def dashboard(self, request):
-        # ✅ 修正：直接使用 student，不使用 captain
         student = request.user
         if not isinstance(student, Student):
             return Response(
@@ -174,7 +172,6 @@ class TeamViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['post'], url_path='create-team')
     @transaction.atomic
     def create_team(self, request):
-        # ✅ 修正：使用 student
         student = request.user
         if not isinstance(student, Student):
             return Response(
@@ -594,32 +591,46 @@ class TeamViewSet(viewsets.GenericViewSet):
                 "active_event": None
             }, status=status.HTTP_200_OK)
 
-        teams_in_event = Group.objects.filter(event=active_event).prefetch_related(
-            'members', 'captain'
+        # 1. 查询当前活动中的所有团队
+        teams_in_event = Group.objects.filter(event=active_event).select_related(
+            'captain', 'preferred_advisor_1', 'preferred_advisor_2', 'preferred_advisor_3'
+        ).prefetch_related('members__major')
+
+        # 2. ✅【核心修改】使用 `Case/When` 动态添加 `student_preference_rank` 字段
+        # 这个字段表示学生团队将当前老师选为第几志愿
+        student_preference_subquery = Case(
+            When(preferred_advisor_1=current_teacher, then=Value(1)),
+            When(preferred_advisor_2=current_teacher, then=Value(2)),
+            When(preferred_advisor_3=current_teacher, then=Value(3)),
+            default=Value(None),
+            output_field=IntegerField(null=True)
         )
 
+        # 3. 同时保留之前的 `my_preference_rank` 字段查询
+        my_preference_subquery = TeacherGroupPreference.objects.filter(
+            teacher=current_teacher,
+            group=OuterRef('pk')
+        ).values('preference_rank')[:1]
+
+        # 4. 将两个新字段附加到查询集上
+        queryset = teams_in_event.annotate(
+            student_preference_rank=student_preference_subquery,
+            my_preference_rank=Subquery(my_preference_subquery, output_field=IntegerField(null=True))
+        )
+
+        # 5. 获取老师自己的志愿，用于顶部卡片栏
         preferences = TeacherGroupPreference.objects.filter(
             teacher=current_teacher,
             group__event=active_event
         )
         preferences_data = {str(p.preference_rank): p.group_id for p in preferences}
 
-        my_preference_subquery = TeacherGroupPreference.objects.filter(
-            teacher=current_teacher,
-            group=OuterRef('pk')
-        ).values('preference_rank')[:1]
-
-        queryset = teams_in_event.annotate(
-            my_preference_rank=Subquery(my_preference_subquery, output_field=IntegerField())
-        )
-
+        # 6. 序列化数据并返回
+        # 注意: 确保 GroupDetailSerializer 包含 student_preference_rank 和 my_preference_rank 字段
         serializer = GroupDetailSerializer(queryset, many=True)
-        teams_data = serializer.data
-        for i, group_obj in enumerate(queryset):
-            teams_data[i]['my_preference_rank'] = group_obj.my_preference_rank
 
         return Response({
-            "teams": teams_data,
+            "teams": serializer.data,
             "preferences": preferences_data,
             "active_event": {
                 "event_id": active_event.event_id,
@@ -817,12 +828,12 @@ class TeamViewSet(viewsets.GenericViewSet):
         except MutualSelectionEvent.DoesNotExist:
             return Response({'error': '活动不存在'}, status=status.HTTP_404_NOT_FOUND)
 
-        now = timezone.now()
-        if not (event.stu_end_time < now and event.tea_end_time < now):
-            return Response(
-                {'error': '活动尚未对所有参与者结束，不能进行分配。'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        # now = timezone.now()
+        # if not (event.stu_end_time < now and event.tea_end_time < now):
+        #     return Response(
+        #         {'error': '活动尚未对所有参与者结束，不能进行分配。'},
+        #         status=status.HTTP_400_BAD_REQUEST
+        #     )
 
         # 清除旧的临时分配
         ProvisionalAssignment.objects.filter(event=event).delete()
@@ -1324,3 +1335,124 @@ class TeamViewSet(viewsets.GenericViewSet):
         return Response({
             'message': f'结果发布成功！共为 {provisional_assignments.count()} 个团队确定了最终导师。'
         })
+
+    @action(detail=True, methods=['get'], url_path='admin/management-info')
+    def admin_management_info(self, request, pk=None):
+        """
+        获取单个活动的管理信息，包括统计和未分组学生。
+        """
+        # ✅ 使用您原来的身份验证方式
+        if not is_admin(request.user):
+            return Response({'error': '无权访问'}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            event = MutualSelectionEvent.objects.get(pk=pk)
+        except MutualSelectionEvent.DoesNotExist:
+            return Response({'error': '活动不存在'}, status=status.HTTP_404_NOT_FOUND)
+
+        total_student_count = event.students.count()
+        grouped_student_ids = GroupMembership.objects.filter(group__event=event).values_list('student_id',
+                                                                                             flat=True).distinct()
+        grouped_student_count = len(grouped_student_ids)
+        ungrouped_students = event.students.exclude(pk__in=grouped_student_ids).select_related('major')
+        groups_in_event = Group.objects.filter(event=event).select_related('captain').prefetch_related('members')
+        all_event_students = event.students.all().select_related('major')
+
+        # 临时序列化器，避免依赖其他 app
+        class TempStudentSerializer(serializers.ModelSerializer):
+            major_name = serializers.CharField(source='major.major_name', read_only=True)
+
+            class Meta:
+                model = Student
+                fields = ['stu_id', 'stu_name', 'stu_no', 'grade', 'major_name']
+
+        return Response({
+            'event': {
+                'event_id': event.event_id,
+                'event_name': event.event_name,
+                'students': TempStudentSerializer(all_event_students, many=True).data
+            },
+            'stats': {
+                'total_students': total_student_count,
+                'grouped_students': grouped_student_count,
+                'ungrouped_students': total_student_count - grouped_student_count,
+                'total_groups': groups_in_event.count(),
+            },
+            'ungrouped_students_list': TempStudentSerializer(ungrouped_students, many=True).data,
+            'groups_list': GroupDetailSerializer(groups_in_event, many=True).data,
+        })
+
+
+    @action(detail=False, methods=['post'], url_path='admin/create-group')
+    @transaction.atomic
+    def admin_create_group(self, request):
+        if not is_admin(request.user): return Response({'error': '无权访问'}, status=status.HTTP_403_FORBIDDEN)
+
+        event_id = request.data.get('event_id')
+        group_name = request.data.get('group_name')
+        captain_id = request.data.get('captain_id')
+        member_ids = request.data.get('members', [])
+
+        if not all([event_id, group_name, captain_id]):
+            return Response({'error': '缺少 event_id, group_name, 或 captain_id'}, status=status.HTTP_400_BAD_REQUEST)
+
+        existing_memberships = GroupMembership.objects.filter(group__event_id=event_id,
+                                                              student_id__in=member_ids).select_related('student', 'group')
+        if existing_memberships.exists():
+            error_msg = ", ".join([f"{m.student.stu_name}(在'{m.group.group_name}'中)" for m in existing_memberships])
+            return Response({'error': f"以下学生已在其他团队中: {error_msg}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        group = Group.objects.create(
+            event_id=event_id,
+            group_name=group_name,
+            captain_id=captain_id,
+            project_title=request.data.get('project_title', ''),
+            project_description=request.data.get('project_description', '')
+        )
+        all_member_ids = set(member_ids)
+        all_member_ids.add(int(captain_id))
+        memberships = [GroupMembership(group=group, student_id=mid) for mid in all_member_ids]
+        GroupMembership.objects.bulk_create(memberships)
+
+        return Response(GroupDetailSerializer(group).data, status=status.HTTP_201_CREATED)
+
+
+    @action(detail=True, methods=['put'], url_path='admin/update-group')
+    @transaction.atomic
+    def admin_update_group(self, request, pk=None):
+        if not is_admin(request.user): return Response({'error': '无权访问'}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            group = Group.objects.get(pk=pk)
+        except Group.DoesNotExist:
+            return Response({'error': '团队不存在'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = GroupCreateUpdateSerializer(group, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        if 'members' in request.data:
+            member_ids = request.data.get('members', [])
+            # 检查是否有成员已在当前活动的其他队伍里
+            existing_memberships = GroupMembership.objects.filter(
+                group__event=group.event,
+                student_id__in=member_ids
+            ).exclude(group=group).select_related('student', 'group')
+            if existing_memberships.exists():
+                error_msg = ", ".join([f"{m.student.stu_name}(在'{m.group.group_name}'中)" for m in existing_memberships])
+                raise serializers.ValidationError(f"以下学生已在其他团队中: {error_msg}")
+
+            group.members.set(member_ids)
+
+        return Response(GroupDetailSerializer(group).data)
+
+    @action(detail=True, methods=['delete'], url_path='admin/delete-group')
+    def admin_delete_group(self, request, pk=None):
+        if not is_admin(request.user): return Response({'error': '无权访问'}, status=status.HTTP_403_FORBIDDEN)
+        try:
+            group = Group.objects.get(pk=pk)
+            group.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Group.DoesNotExist:
+            return Response({'error': '团队不存在'}, status=status.HTTP_404_NOT_FOUND)
+

@@ -32,6 +32,9 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.exceptions import TokenError
 
+from teamapp.views import is_admin
+
+
 
 class RegisterView(generics.CreateAPIView):
     """
@@ -520,7 +523,6 @@ class TeacherManagementViewSet(viewsets.ModelViewSet):
     教师管理视图集，支持搜索、创建、更新、删除和批量删除。
     """
     queryset = teacher.objects.all().order_by('teacher_id')
-
     filter_backends = [filters.SearchFilter]
     search_fields = ['teacher_no', 'teacher_name']
 
@@ -854,3 +856,5 @@ def refresh_admin_token(request):
             {'error': '刷新token失败'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+

@@ -74,13 +74,9 @@
           <div class="info-section">
             <div class="section-header">
               <h4>志愿导师</h4>
-              <el-button
-                v-if="dashboard.is_captain"
-                type="primary"
-                link
-                @click="openAdvisorModal"
-              >
-                选择/修改
+              <!-- ✅ 修改：所有成员均可查看，按钮文字不同 -->
+              <el-button type="primary" link @click="openAdvisorModal">
+                {{ dashboard.is_captain ? '选择/修改' : '查看可选导师' }}
               </el-button>
             </div>
             <div class="section-content">
@@ -268,58 +264,30 @@
     </el-dialog>
 
     <!-- 选择导师对话框 -->
-    <el-dialog
-      v-model="isAdvisorModalVisible"
-      title="选择志愿导师"
-      width="1000px"
-      :close-on-click-modal="false"
-    >
-      <div v-if="modalLoading" class="loading-container">
-        <el-icon class="is-loading" :size="30"><Loading /></el-icon>
-        <p>加载导师列表中...</p>
-      </div>
+    <el-dialog v-model="isAdvisorModalVisible" :title="dashboard.is_captain ? '选择志愿导师' : '查看可选导师'"
+      width="1000px" :close-on-click-modal="false">
 
-      <div v-else class="advisor-selection-container">
-        <el-alert
-          title="请为您的团队选择三位志愿导师（按优先级顺序）"
-          type="info"
-          :closable="false"
-          style="margin-bottom: 20px;"
-        />
+      <div v-loading="modalLoading" class="advisor-selection-container">
+        <!-- 提示信息 -->
+        <el-alert v-if="dashboard.is_captain" title="请为您的团队选择三位志愿导师（按优先级顺序）" type="info"
+          :closable="false" style="margin-bottom: 20px;" />
 
+        <!-- 顶部志愿栏 -->
         <div class="preferences-cards">
-          <el-card
-            v-for="level in [1, 2, 3]"
-            :key="level"
-            :class="['preference-card', { 'has-selection': preferences[`preferred_advisor_${level}`] }]"
-            shadow="hover"
-          >
+          <el-card v-for="level in [1, 2, 3]" :key="level"
+            :class="['preference-card', { 'has-selection': preferences[`preferred_advisor_${level}`] }]" shadow="hover">
             <div class="preference-card-header">
               <h4>第{{ ['一', '二', '三'][level - 1] }}志愿</h4>
-              <el-tag
-                :type="['success', 'warning', 'info'][level - 1]"
-                size="small"
-              >
-                志愿{{ level }}
-              </el-tag>
+              <el-tag :type="['danger', 'warning', 'success'][level - 1]" size="small">志愿{{ level }}</el-tag>
             </div>
-
             <div class="preference-card-body">
               <div v-if="preferences[`preferred_advisor_${level}`]" class="selected-advisor">
                 <div class="advisor-info-selected">
-                  <el-avatar :size="50">
-                    {{ getAdvisorName(preferences[`preferred_advisor_${level}`])?.charAt(0) }}
-                  </el-avatar>
+                  <el-avatar :size="50">{{ getAdvisorName(preferences[`preferred_advisor_${level}`])?.charAt(0) }}</el-avatar>
                   <div class="advisor-details-selected">
-                    <span class="advisor-name-large">
-                      {{ getAdvisorName(preferences[`preferred_advisor_${level}`]) }}
-                    </span>
-                    <el-button
-                      type="danger"
-                      size="small"
-                      link
-                      @click="preferences[`preferred_advisor_${level}`] = null"
-                    >
+                    <span class="advisor-name-large">{{ getAdvisorName(preferences[`preferred_advisor_${level}`]) }}</span>
+                    <!-- ✅ 只有队长能看到取消按钮 -->
+                    <el-button v-if="dashboard.is_captain" type="danger" size="small" link @click="preferences[`preferred_advisor_${level}`] = null">
                       取消选择
                     </el-button>
                   </div>
@@ -328,7 +296,7 @@
               <div v-else class="empty-selection">
                 <el-icon :size="40" color="#c0c4cc"><User /></el-icon>
                 <span class="empty-text">未选择导师</span>
-                <span class="help-text">从下方列表中选择</span>
+                <span v-if="dashboard.is_captain" class="help-text">由队长从下方列表选择</span>
               </div>
             </div>
           </el-card>
@@ -336,92 +304,77 @@
 
         <el-divider />
 
+        <!-- 导师列表 -->
         <div class="advisor-list-section">
           <div class="list-header">
             <h4>可选导师列表</h4>
-            <el-tag type="info">
-              共 {{ availableAdvisors.length }} 位导师
-            </el-tag>
+            <!-- ✅ 新增：搜索框 -->
+            <el-input v-model="advisorSearchQuery" placeholder="按姓名或研究方向搜索" clearable :prefix-icon="Search"
+              style="width: 300px;" />
           </div>
 
           <el-scrollbar max-height="400px">
-            <el-card
-              v-for="advisor in availableAdvisors"
-              :key="advisor.teacher_id"
-              :class="['advisor-card', { 'is-selected': isAdvisorSelected(advisor.teacher_id) }]"
-              shadow="hover"
-            >
+            <el-card v-for="advisor in filteredAdvisors" :key="advisor.teacher_id"
+              :class="['advisor-card', { 'is-selected': isAdvisorSelected(advisor.teacher_id) }]" shadow="hover">
               <div class="advisor-card-content">
                 <div class="advisor-left">
                   <el-avatar :size="45">{{ advisor.teacher_name.charAt(0) }}</el-avatar>
                   <div class="advisor-info-main">
                     <h5 class="advisor-name-main">{{ advisor.teacher_name }}</h5>
-                    <p class="advisor-research">
-                      {{ advisor.research_direction || '暂无研究方向信息' }}
-                    </p>
+                    <p class="advisor-research">{{ advisor.research_direction || '暂无研究方向信息' }}</p>
                   </div>
                 </div>
-
                 <div class="advisor-right">
-                  <el-button
-                    type="primary"
-                    link
-                    size="small"
-                    @click="showAdvisorDetails(advisor)"
-                  >
-                    详细资料
-                  </el-button>
-                  <el-button-group>
+                  <el-button type="primary" link size="small" @click="showAdvisorDetails(advisor)">详细资料</el-button>
+                  <!-- ✅ 只有队长能看到志愿选择按钮组 -->
+                  <el-button-group v-if="dashboard.is_captain">
                     <el-button
-                      :type="preferences.preferred_advisor_1 === advisor.teacher_id ? 'success' : 'default'"
+                      :type="preferences.preferred_advisor_1 === advisor.teacher_id ? 'danger' : 'default'"
                       size="small"
                       @click="setPreference(1, advisor.teacher_id)"
-                      :disabled="isAdvisorSelected(advisor.teacher_id) && preferences.preferred_advisor_1 !== advisor.teacher_id"
-                    >
+                      :disabled="isAdvisorSelected(advisor.teacher_id) && preferences.preferred_advisor_1 !== advisor.teacher_id">
                       一志愿
                     </el-button>
                     <el-button
                       :type="preferences.preferred_advisor_2 === advisor.teacher_id ? 'warning' : 'default'"
                       size="small"
                       @click="setPreference(2, advisor.teacher_id)"
-                      :disabled="isAdvisorSelected(advisor.teacher_id) && preferences.preferred_advisor_2 !== advisor.teacher_id"
-                    >
+                      :disabled="isAdvisorSelected(advisor.teacher_id) && preferences.preferred_advisor_2 !== advisor.teacher_id">
                       二志愿
                     </el-button>
                     <el-button
-                      :type="preferences.preferred_advisor_3 === advisor.teacher_id ? 'info' : 'default'"
+                      :type="preferences.preferred_advisor_3 === advisor.teacher_id ? 'success' : 'default'"
                       size="small"
                       @click="setPreference(3, advisor.teacher_id)"
-                      :disabled="isAdvisorSelected(advisor.teacher_id) && preferences.preferred_advisor_3 !== advisor.teacher_id"
-                    >
+                      :disabled="isAdvisorSelected(advisor.teacher_id) && preferences.preferred_advisor_3 !== advisor.teacher_id">
                       三志愿
                     </el-button>
                   </el-button-group>
                 </div>
               </div>
             </el-card>
+            <el-empty v-if="filteredAdvisors.length === 0" description="没有找到匹配的导师" />
           </el-scrollbar>
         </div>
       </div>
 
       <template #footer>
         <div class="dialog-footer-custom">
-          <el-alert
-            v-if="!preferences.preferred_advisor_1 && !preferences.preferred_advisor_2 && !preferences.preferred_advisor_3"
-            title="提示：您还没有选择任何志愿导师"
-            type="warning"
-            :closable="false"
-            show-icon
-            style="flex: 1; margin-right: 16px;"
-          />
-          <el-button @click="isAdvisorModalVisible = false" size="large">取消</el-button>
-          <el-button
-            type="primary"
-            @click="handleUpdateAdvisors"
-            size="large"
-            :disabled="!preferences.preferred_advisor_1 && !preferences.preferred_advisor_2 && !preferences.preferred_advisor_3"
-          >
-            保存我的志愿选择
+          <!-- ✅ 只有队长能看到保存按钮 -->
+          <template v-if="dashboard.is_captain">
+            <el-alert
+              v-if="!preferences.preferred_advisor_1 || !preferences.preferred_advisor_2 || !preferences.preferred_advisor_3"
+              title="提示：建议选择全部三个志愿以提高成功率" type="warning" :closable="false" show-icon
+              style="flex: 1; margin-right: 16px;" />
+            <el-button @click="isAdvisorModalVisible = false" size="large">取消</el-button>
+            <el-button type="primary" @click="handleUpdateAdvisors" size="large"
+              :disabled="!preferences.preferred_advisor_1 && !preferences.preferred_advisor_2 && !preferences.preferred_advisor_3">
+              保存志愿选择
+            </el-button>
+          </template>
+          <!-- ✅ 队员只能看到关闭按钮 -->
+          <el-button v-else @click="isAdvisorModalVisible = false" type="primary" size="large" style="width: 100%;">
+            关闭
           </el-button>
         </div>
       </template>
@@ -575,6 +528,19 @@ const availableAdvisors = ref([])
 const availableTeammates = ref([])
 const allTeams = ref([])
 const teammateSearchQuery = ref('')
+const advisorSearchQuery = ref('');
+
+const filteredAdvisors = computed(() => {
+  if (!advisorSearchQuery.value) {
+    return availableAdvisors.value;
+  }
+  const query = advisorSearchQuery.value.toLowerCase();
+  return availableAdvisors.value.filter(advisor =>
+    advisor.teacher_name.toLowerCase().includes(query) ||
+    (advisor.research_direction && advisor.research_direction.toLowerCase().includes(query))
+  );
+});
+
 
 // 计算属性
 const filteredTeammates = computed(() => {
@@ -652,6 +618,7 @@ const openProjectEditModal = () => {
 }
 
 const openAdvisorModal = async () => {
+  advisorSearchQuery.value = '';
   const teamInfo = dashboard.value.my_team_info
   preferences.preferred_advisor_1 = teamInfo.preferred_advisor_1?.teacher_id || null
   preferences.preferred_advisor_2 = teamInfo.preferred_advisor_2?.teacher_id || null
