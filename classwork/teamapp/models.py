@@ -10,6 +10,7 @@ class Group(models.Model):
     group_name = models.CharField(max_length=255, verbose_name='分组名称')
     project_title = models.CharField(max_length=255, verbose_name="项目标题", blank=True)
     project_description = models.TextField(verbose_name="项目简介", blank=True)
+    MEMBERS_LIMIT = 4
 
     event = models.ForeignKey(
         'adminapp.MutualSelectionEvent',
@@ -81,6 +82,9 @@ class Group(models.Model):
         if self.event:
             if self.advisor and not self.event.teachers.filter(pk=self.advisor.pk).exists():
                 raise ValidationError(f"指导老师 {self.advisor.teacher_name} 未参与此互选活动。")
+
+        if self.members.count() > self.MEMBERS_LIMIT:
+            raise ValidationError(f"团队成员人数不能超过 {self.MEMBERS_LIMIT} 人（含队长）。")
 
     def __str__(self):
         return self.group_name

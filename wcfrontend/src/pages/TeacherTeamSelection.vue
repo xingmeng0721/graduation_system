@@ -1,9 +1,12 @@
 <template>
   <div class="page-container">
-    <!-- ... (页面标题, 加载状态, 错误提示保持不变) ... -->
     <div class="page-header">
       <h2>选择指导团队</h2>
-      <el-tag v-if="activeEvent" type="primary" size="large">
+      <el-tag
+        v-if="activeEvent"
+        type="primary"
+        size="large"
+      >
         {{ activeEvent.event_name }} - 截止: {{ formatDate(activeEvent.end_time) }}
       </el-tag>
     </div>
@@ -11,86 +14,135 @@
     <el-alert v-if="error" :title="error" type="error" :closable="false" show-icon />
 
     <template v-if="!isLoading && activeEvent">
-      <!-- 顶部志愿栏 -->
-      <div class="preferences-cards">
-         <el-card v-for="rank in choiceLimitRange" :key="rank"
-          :class="['preference-card', { 'has-selection': preferences[rank] }]" shadow="hover">
-          <div class="preference-card-header">
-            <h4>第{{ ['一', '二', '三', '四', '五'][rank - 1] || rank }}志愿</h4>
-            <el-tag :type="preferenceTagTypes[rank-1] || 'info'" size="small">志愿 {{ rank }}</el-tag>
-          </div>
-          <div class="preference-card-body">
-            <div v-if="preferences[rank] && getTeamById(preferences[rank])" class="selected-team-info">
-              <div class="selected-team-details">
-                <span class="selected-project-title">{{ getTeamById(preferences[rank]).project_title || '未命名项目' }}</span>
-                <span class="selected-captain-name">队长: {{ getTeamById(preferences[rank]).captain.stu_name }}</span>
-              </div>
-              <el-button type="danger" circle :icon="Close" @click="clearPreference(rank)" />
-            </div>
-            <div v-else class="empty-selection">
-              <el-icon :size="40" color="#c0c4cc"><OfficeBuilding /></el-icon>
-              <span class="empty-text">待选择</span>
-            </div>
-          </div>
-        </el-card>
-      </div>
-
-      <el-divider />
-
-      <!-- 团队列表区域 -->
-      <div class="team-list-section">
-        <div class="list-controls">
-          <h3>可选团队列表 ({{ filteredTeams.length }})</h3>
-          <div class="filters">
-            <el-input v-model="searchQuery" placeholder="搜索项目或队长" clearable :prefix-icon="Search" style="width: 240px; margin-right: 16px;" />
-            <el-checkbox v-model="showOnlyStudentPreferred" label="只看选择我的团队" size="large" border />
-            <el-button type="primary" @click="savePreferences" style="margin-left: 16px;">
-              <el-icon><Select /></el-icon>
-              保存所有志愿
-            </el-button>
-          </div>
-        </div>
-
-        <!-- ✅ 竖向列表布局 -->
-        <div class="team-vertical-list">
-          <div v-for="team in filteredTeams" :key="team.group_id"
-            :class="['team-list-item', { 'is-selected': team.my_preference_rank }]">
-            <div class="item-content">
-              <div class="item-main">
-                <h4 class="item-project-title">{{ team.project_title || '未命名项目' }}</h4>
-                <p class="item-project-desc">{{ team.project_description_short || '该团队尚未填写项目简介。' }}</p>
-                <div class="item-meta">
-                  <span><el-icon><User /></el-icon>队长: {{ team.captain.stu_name }}</span>
-                  <span><el-icon><TrendCharts /></el-icon>成员: {{ team.member_count }}人</span>
-                </div>
-              </div>
-              <div class="item-tags">
-                <el-tag v-if="team.my_preference_rank" :type="preferenceTagTypes[team.my_preference_rank-1] || 'info'" effect="dark">
-                  我的第{{ team.my_preference_rank }}志愿
-                </el-tag>
-                <el-tag v-if="team.student_preference_rank" type="success" effect="light">
-                  学生第{{ team.student_preference_rank }}志愿
-                </el-tag>
-              </div>
-            </div>
-            <div class="item-actions">
-              <!-- ✅ 调用新的弹窗 -->
-              <el-button type="primary" @click="openPreferenceDialog(team)">
-                查看详情 & 选择志愿
+      <div class="main-layout">
+        <!-- 左侧团队列表 -->
+        <div class="team-list-section">
+          <div class="list-controls">
+            <h3>可选团队列表 ({{ filteredTeams.length }})</h3>
+            <div class="filters">
+              <!-- 搜索框 -->
+              <el-input
+                v-model="searchQuery"
+                placeholder="搜索项目或队长"
+                clearable
+                :prefix-icon="Search"
+                class="filter-input"
+              />
+              <!-- 只看我的团队 -->
+              <el-checkbox
+                v-model="showOnlyStudentPreferred"
+                size="large"
+                border
+                class="filter-checkbox"
+              >
+                只看选择我的团队
+              </el-checkbox>
+              <!-- 保存志愿 -->
+              <el-button
+                type="primary"
+                @click="savePreferences"
+                class="save-button"
+              >
+                <el-icon><Select /></el-icon> 保存所有志愿
               </el-button>
             </div>
           </div>
+
+          <div class="team-vertical-list">
+            <div
+              v-for="team in filteredTeams"
+              :key="team.group_id"
+              :class="['team-list-item', { 'is-selected': team.my_preference_rank }]"
+            >
+              <div class="item-content">
+                <div class="item-main">
+                  <h4 class="item-project-title">{{ team.project_title || '未命名项目' }}</h4>
+                  <p class="item-project-desc">
+                    {{ team.project_description_short || '该团队尚未填写项目简介。' }}
+                  </p>
+                  <div class="item-meta">
+                    <span><el-icon><User /></el-icon>队长: {{ team.captain.stu_name }}</span>
+                    <span><el-icon><TrendCharts /></el-icon>成员: {{ team.member_count }}人</span>
+                  </div>
+                </div>
+                <div class="item-tags">
+                  <el-tag
+                    v-if="team.my_preference_rank"
+                    :type="preferenceTagTypes[team.my_preference_rank - 1] || 'info'"
+                    effect="dark"
+                  >
+                    我的第{{ team.my_preference_rank }}志愿
+                  </el-tag>
+                  <el-tag
+                    v-if="team.student_preference_rank"
+                    type="success"
+                    effect="light"
+                  >
+                    学生第{{ team.student_preference_rank }}志愿
+                  </el-tag>
+                </div>
+              </div>
+              <div class="item-actions">
+                <el-button
+                  type="primary"
+                  @click="openPreferenceDialog(team)"
+                >
+                  查看详情 & 选择志愿
+                </el-button>
+              </div>
+            </div>
+          </div>
+          <el-empty v-if="filteredTeams.length === 0" description="没有找到符合条件的团队" />
         </div>
-        <el-empty v-if="filteredTeams.length === 0" description="没有找到符合条件的团队" />
+
+        <!-- 右侧志愿选择 -->
+        <div class="preferences-section">
+          <h3>志愿选择</h3>
+          <div class="preferences-cards">
+            <el-card
+              v-for="rank in choiceLimitRange"
+              :key="rank"
+              :class="['preference-card', { 'has-selection': preferences[rank] }]"
+              shadow="hover"
+            >
+              <div class="preference-card-header">
+                <h4>{{ ['第一', '第二', '第三', '第四', '第五'][rank - 1] || rank }}志愿</h4>
+                <el-tag
+                  :type="preferenceTagTypes[rank - 1] || 'info'"
+                  size="small"
+                >志愿 {{ rank }}</el-tag>
+              </div>
+              <div class="preference-card-body">
+                <div
+                  v-if="preferences[rank] && getTeamById(preferences[rank])"
+                  class="selected-team-info"
+                >
+                  <div class="selected-team-details">
+                    <span class="selected-project-title">{{ getTeamById(preferences[rank]).project_title || '未命名项目' }}</span>
+                    <span class="selected-captain-name">队长: {{ getTeamById(preferences[rank]).captain.stu_name }}</span>
+                  </div>
+                  <el-button
+                    type="danger"
+                    circle
+                    :icon="Close"
+                    @click="clearPreference(rank)"
+                  />
+                </div>
+                <div v-else class="empty-selection">
+                  <el-icon :size="40" color="#c0c4cc"><OfficeBuilding /></el-icon>
+                  <span class="empty-text">待选择</span>
+                </div>
+              </div>
+            </el-card>
+          </div>
+        </div>
       </div>
     </template>
 
-    <!-- 无活动状态 -->
     <el-card v-if="!isLoading && !activeEvent" class="no-activity-card" shadow="never">
       <el-empty description="当前没有正在进行的互选活动" />
     </el-card>
 
-    <!-- ✅ 使用新的志愿选择弹窗 -->
     <TeacherPreferenceDialog
       v-if="activeEvent"
       v-model="isDetailModalVisible"
@@ -210,6 +262,38 @@ const formatDate = (dateString) => dateString ? new Date(dateString).toLocaleStr
 
 
 <style scoped>
+
+.main-layout {
+  display: flex;
+  gap: 20px;
+}
+
+/* 左侧团队列表 */
+.team-list-section {
+  flex: 3;
+  display: flex;
+  flex-direction: column;
+}
+
+.team-vertical-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* 右侧志愿选择 */
+.preferences-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.preferences-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
 .team-vertical-list {
   display: flex;
   flex-direction: column;
@@ -355,6 +439,19 @@ const formatDate = (dateString) => dateString ? new Date(dateString).toLocaleStr
 .filters {
   display: flex;
   align-items: center;
+}
+.filter-input, .filter-checkbox, .save-button {
+  height: 40px; /* 设置统一的高度 */
+  line-height: 38px; /* 文案居中 */
+}
+
+.filter-input {
+  flex-grow: 1;
+  width: auto; /* 让搜索框自适应 */
+}
+
+.filter-checkbox {
+  flex-shrink: 0; /* 防止缩放 */
 }
 
 .loading-container {

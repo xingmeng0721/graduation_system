@@ -66,6 +66,7 @@ class GroupDetailSerializer(serializers.ModelSerializer):
     event_name = serializers.CharField(source='event.event_name', read_only=True)
     event_id = serializers.IntegerField(source='event.event_id', read_only=True)
     member_count = serializers.SerializerMethodField()
+    group_member_limit = serializers.IntegerField(source='event.group_member_limit', read_only=True)  # 添加团队人数上限字段
 
     student_preference_rank = serializers.IntegerField(read_only=True, required=False)
     my_preference_rank = serializers.IntegerField(read_only=True, required=False)
@@ -81,7 +82,8 @@ class GroupDetailSerializer(serializers.ModelSerializer):
             'event_id', 'event_name', 'captain', 'members', 'member_count',
             'advisor', 'preferred_advisor_1', 'preferred_advisor_2', 'preferred_advisor_3',
             'student_preference_rank',
-            'my_preference_rank'
+            'my_preference_rank',
+            'group_member_limit'
         ]
 
     def get_members(self, obj):
@@ -121,7 +123,7 @@ class GroupCreateUpdateSerializer(serializers.ModelSerializer):
         # [修复] Meta.fields 必须包含序列化器中定义的字段名
         fields = [
             'group_name', 'project_title', 'project_description',
-            'preferred_advisor_1_id', 'preferred_advisor_2_id', 'preferred_advisor_3_id'
+            'preferred_advisor_1_id', 'preferred_advisor_2_id', 'preferred_advisor_3_id',
         ]
 
     def validate(self, data):
@@ -134,6 +136,10 @@ class GroupCreateUpdateSerializer(serializers.ModelSerializer):
             advisor = data.get(f'preferred_advisor_{i}')
             if advisor and advisor not in available_teachers:
                 raise serializers.ValidationError(f"选择的志愿导师 '{advisor.teacher_name}' 未参与当前活动。")
+
+            group_member_limit = active_event.group_member_limit
+            if len(self.context.get('member_ids', [])) + 1 > group_member_limit:  # 包括队长
+                raise serializers.ValidationError(f"团队成员人数不能超过 {group_member_limit} 人（含队长）。")
 
         # 2. 验证团队名称唯一性
         group_name = data.get('group_name')
@@ -248,13 +254,15 @@ class AdvisedGroupSummarySerializer(serializers.ModelSerializer):
     event_name = serializers.CharField(source='event.event_name', read_only=True)
     event_id = serializers.IntegerField(source='event.event_id', read_only=True)
     project_description_short = serializers.SerializerMethodField()
+    group_member_limit = serializers.IntegerField(source='event.group_member_limit', read_only=True)  # 添加团队人数上限字段
 
     class Meta:
         model = Group
         fields = [
             'group_id', 'group_name', 'project_title',
             'project_description_short',
-            'event_id', 'event_name', 'captain', 'member_count'
+            'event_id', 'event_name', 'captain', 'member_count',
+            'group_member_limit'
         ]
 
     def get_project_description_short(self, obj):

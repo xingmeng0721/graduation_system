@@ -226,7 +226,7 @@ const cancelEditing = () => { isEditing.value = false }
 
 const validateInputs = () => {
   const phoneRegex = /^1\d{10}$/
-  const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/
+  const emailRegex = /^[A-Za-z0-9](?:[A-Za-z0-9._%+-]*[A-Za-z0-9])?@[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z]{2,63})+$/
   const passwordRegex = /^[A-Za-z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?]+$/
 
   if (editableStudent.phone && !phoneRegex.test(editableStudent.phone)) {

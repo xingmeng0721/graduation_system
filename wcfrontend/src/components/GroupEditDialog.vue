@@ -55,14 +55,24 @@ const isEditMode = computed(() => !!props.groupData);
 
 const studentPool = computed(() => {
   if (!props.eventData) return [];
-  if (isEditMode.value) {
-    return props.eventData.event.students || [];
-  }
-  return props.eventData.ungrouped_students_list || [];
-});
 
-const selectPlaceholder = computed(() => {
-    return isEditMode.value ? '可从所有参与学生中调整' : '请从未分组学生中选择';
+  const ungrouped = props.eventData.ungrouped_students_list || [];
+
+  // 编辑模式下，把本组成员加进去（即便他们已分组）
+  if (isEditMode.value && props.groupData) {
+    const currentGroupMembers = props.groupData.members || [];
+    // 合并去重（按 stu_id）
+    const combined = [...ungrouped];
+    currentGroupMembers.forEach(member => {
+      if (!combined.some(s => s.stu_id === member.stu_id)) {
+        combined.push(member);
+      }
+    });
+    return combined;
+  }
+
+  // 创建模式：只返回未分组学生
+  return ungrouped;
 });
 
 watch(() => props.modelValue, (val) => {

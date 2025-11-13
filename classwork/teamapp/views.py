@@ -238,6 +238,12 @@ class TeamViewSet(viewsets.GenericViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+        group_member_limit = active_event.group_member_limit
+        current_members_count = group.members.count()
+        if current_members_count >= group_member_limit:
+            return Response({'error': f"团队成员人数已达上限（{group_member_limit} 人），无法加入团队"},
+                            status=status.HTTP_400_BAD_REQUEST)
+
         GroupMembership.objects.create(student=student, group=group)
         return Response({'message': '成功加入团队'}, status=status.HTTP_200_OK)
 
@@ -498,12 +504,19 @@ class TeamViewSet(viewsets.GenericViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
 
+        group_member_limit = active_event.group_member_limit
+        current_members_count = group.members.count()
+        if current_members_count >= group_member_limit:
+            return Response({'error': f"团队成员人数已达上限（{group_member_limit} 人），无法添加成员"},
+                            status=status.HTTP_400_BAD_REQUEST)
+
         student_id = request.data.get('student_id')
         if not student_id:
             return Response(
                 {'error': '必须提供学生ID'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
 
         try:
             student_to_add = Student.objects.get(pk=student_id)
@@ -1396,6 +1409,21 @@ class TeamViewSet(viewsets.GenericViewSet):
         if not all([event_id, group_name, captain_id]):
             return Response({'error': '缺少 event_id, group_name, 或 captain_id'}, status=status.HTTP_400_BAD_REQUEST)
 
+        # 尝试获取活动对象
+        try:
+            event = MutualSelectionEvent.objects.get(pk=event_id)
+        except MutualSelectionEvent.DoesNotExist:
+            return Response({'error': '活动不存在'}, status=status.HTTP_404_NOT_FOUND)
+
+        group_member_limit = event.group_member_limit
+        if len(member_ids) > group_member_limit:
+            return Response({'error': f'团队成员人数不能超过 {group_member_limit} 人（含队长）'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+            # 验证队长是否在成员中
+        if captain_id not in member_ids:
+            return Response({'error': '队长必须是团队成员之一'}, status=status.HTTP_400_BAD_REQUEST)
+
         existing_memberships = GroupMembership.objects.filter(group__event_id=event_id,
                                                               student_id__in=member_ids).select_related('student', 'group')
         if existing_memberships.exists():
@@ -1416,35 +1444,78 @@ class TeamViewSet(viewsets.GenericViewSet):
 
         return Response(GroupDetailSerializer(group).data, status=status.HTTP_201_CREATED)
 
-
     @action(detail=True, methods=['put'], url_path='admin/update-group')
     @transaction.atomic
     def admin_update_group(self, request, pk=None):
-        if not is_admin(request.user): return Response({'error': '无权访问'}, status=status.HTTP_403_FORBIDDEN)
+        """
+        ✅ 管理员更新团队信息（支持修改名称、简介、标题、成员、队长等）
+        """
+        # --- 权限验证 ---
+        if not is_admin(request.user):
+            return Response({'error': '无权访问'}, status=status.HTTP_403_FORBIDDEN)
 
+        # --- 获取团队实例 ---
         try:
-            group = Group.objects.get(pk=pk)
+            group = Group.objects.select_related('event').get(pk=pk)
         except Group.DoesNotExist:
             return Response({'error': '团队不存在'}, status=status.HTTP_404_NOT_FOUND)
 
-        serializer = GroupCreateUpdateSerializer(group, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
+        update_data = request.data
+        member_ids = update_data.get('members', None)
+        captain_id = update_data.get('captain_id', None)
 
-        if 'members' in request.data:
-            member_ids = request.data.get('members', [])
-            # 检查是否有成员已在当前活动的其他队伍里
+        # --- 校验成员和队长逻辑 ---
+        if member_ids is not None:
+            group_event = group.event
+            group_member_limit = group_event.group_member_limit
+
+            # 队长必须在成员中
+            if captain_id and captain_id not in member_ids:
+                return Response({'error': '队长必须是团队成员之一'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # 成员数量不能超过限制
+            if len(member_ids) > group_member_limit:
+                return Response(
+                    {'error': f'团队成员人数不能超过 {group_member_limit} 人（含队长）'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # 校验是否有成员在其他团队中
             existing_memberships = GroupMembership.objects.filter(
-                group__event=group.event,
+                group__event=group_event,
                 student_id__in=member_ids
             ).exclude(group=group).select_related('student', 'group')
             if existing_memberships.exists():
-                error_msg = ", ".join([f"{m.student.stu_name}(在'{m.group.group_name}'中)" for m in existing_memberships])
-                raise serializers.ValidationError(f"以下学生已在其他团队中: {error_msg}")
+                conflict_details = ', '.join(
+                    [f"{m.student.stu_name}(已在团队：{m.group.group_name})" for m in existing_memberships]
+                )
+                return Response({'error': f'以下成员已在其他团队中: {conflict_details}'},
+                                status=status.HTTP_400_BAD_REQUEST)
 
+            # ✅ 更新团队成员
             group.members.set(member_ids)
 
-        return Response(GroupDetailSerializer(group).data)
+        # --- 更新队长（如果有传入）---
+        if captain_id:
+            group.captain_id = captain_id
+
+        # --- 更新基础字段（名称、简介、标题）---
+        serializer = GroupCreateUpdateSerializer(
+            group,
+            data=update_data,
+            partial=True,
+            context={'active_event': group.event}
+        )
+
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        # --- 保存最终结果 ---
+        group.save()
+
+        # --- 返回更新后的数据 ---
+        updated_group = Group.objects.prefetch_related('members').get(pk=pk)
+        return Response(GroupDetailSerializer(updated_group).data, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['delete'], url_path='admin/delete-group')
     def admin_delete_group(self, request, pk=None):

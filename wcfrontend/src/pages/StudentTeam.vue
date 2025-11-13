@@ -34,16 +34,26 @@
             <div class="card-header">
               <div>
                 <h3>{{ dashboard.my_team_info.group_name }}</h3>
-                <el-tag v-if="dashboard.is_captain" type="warning" effect="plain">我是队长</el-tag>
               </div>
-              <!-- 查看完整信息按钮 -->
-              <el-button
-                type="primary"
-                link
-                @click="viewTeamDetail(dashboard.my_team_info.group_id)"
-              >
-                查看完整信息
-              </el-button>
+              <div>
+                <!-- 查看完整信息按钮 -->
+                <el-button
+                  type="primary"
+                  link
+                  @click="viewTeamDetail(dashboard.my_team_info.group_id)"
+                >
+                  查看完整信息
+                </el-button>
+                <!-- 编辑团队信息按钮（队长可见） -->
+                <el-button
+                  v-if="dashboard.is_captain"
+                  type="primary"
+                  link
+                  @click="openTeamEditModal"
+                >
+                  编辑团队信息
+                </el-button>
+              </div>
             </div>
           </template>
 
@@ -51,14 +61,6 @@
           <div class="info-section">
             <div class="section-header">
               <h4>项目信息</h4>
-              <el-button
-                v-if="dashboard.is_captain"
-                type="primary"
-                link
-                @click="openProjectEditModal"
-              >
-                编辑
-              </el-button>
             </div>
             <div class="section-content">
               <p class="project-title">{{ dashboard.my_team_info.project_title || '尚未填写项目标题' }}</p>
@@ -236,12 +238,15 @@
     </el-card>
 
     <!-- 编辑项目信息对话框 -->
-    <el-dialog
-      v-model="isProjectModalVisible"
-      title="编辑项目信息"
-      width="600px"
-    >
-      <el-form @submit.prevent="handleUpdateProjectInfo" label-width="100px">
+<el-dialog
+  v-model="isTeamEditModalVisible"
+  title="编辑团队信息"
+  width="600px"
+>
+  <el-form @submit.prevent="handleUpdateTeamInfo" label-width="100px">
+    <el-form-item label="团队名称">
+      <el-input v-model="editTeam.group_name" placeholder="团队名称" />
+    </el-form-item>
         <el-form-item label="项目标题">
           <el-input
             v-model="editTeam.project_title"
@@ -502,6 +507,7 @@ const dashboard = ref({
   my_team_info: null,
   is_captain: false
 })
+const isEditingGroupName = ref(false)
 
 // 弹窗状态
 const modalLoading = ref(false)
@@ -512,10 +518,14 @@ const isAllTeamsModalVisible = ref(false)
 const showAdvisorDetail = ref(false)
 const showTeamDetail = ref(false)
 const currentTeamId = ref(null)
+const isTeamEditModalVisible = ref(false)
 
 // 表单数据
 const newTeam = ref({ group_name: '' })
-const editTeam = reactive({ project_title: '', project_description: '' })
+const editTeam = reactive({
+  group_name: '',
+  project_title: '',
+  project_description: ''})
 const preferences = reactive({
   preferred_advisor_1: null,
   preferred_advisor_2: null,
@@ -542,6 +552,29 @@ const filteredAdvisors = computed(() => {
 });
 
 
+const openTeamEditModal = () => {
+  const teamInfo = dashboard.value.my_team_info
+  editTeam.group_name = teamInfo.group_name || ''
+  editTeam.project_title = teamInfo.project_title || ''
+  editTeam.project_description = teamInfo.project_description || ''
+  isTeamEditModalVisible.value = true
+}
+
+const handleUpdateTeamInfo = async () => {
+  try {
+    const payload = {
+      group_name: editTeam.group_name,
+      project_title: editTeam.project_title,
+      project_description: editTeam.project_description
+    }
+    await api.updateMyTeam(payload)
+    ElMessage.success('团队信息更新成功！')
+    isTeamEditModalVisible.value = false
+    await fetchDashboardData()
+  } catch (err) {
+    ElMessage.error(`更新失败: ${err.response?.data?.error || '请检查输入'}`)
+  }
+}
 // 计算属性
 const filteredTeammates = computed(() => {
   if (!teammateSearchQuery.value) return availableTeammates.value
@@ -550,6 +583,26 @@ const filteredTeammates = computed(() => {
     s => s.stu_name.toLowerCase().includes(query) || s.major_name.toLowerCase().includes(query)
   )
 })
+
+if (dashboard.value.my_team_info) {
+  editTeam.group_name = dashboard.value.my_team_info.group_name
+}
+
+const saveGroupName = async () => {
+  try {
+    await api.updateMyTeam({ group_name: editTeam.group_name })
+    ElMessage.success('队名更新成功！')
+    isEditingGroupName.value = false
+    await fetchDashboardData()
+  } catch (err) {
+    ElMessage.error(`更新失败: ${err.response?.data?.error || '请检查输入'}`)
+  }
+}
+
+const cancelEditGroupName = () => {
+  editTeam.group_name = dashboard.value.my_team_info.group_name
+  isEditingGroupName.value = false
+}
 
 // 辅助方法
 const isAdvisorSelected = (teacherId) => {

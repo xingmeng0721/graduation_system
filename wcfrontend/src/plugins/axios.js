@@ -153,6 +153,9 @@ apiClient.interceptors.response.use(
 
     if (error.response?.status === 403) {
       ElMessage.error('您没有权限访问该资源');
+      clearAllTokens();
+      router.push({ name: 'Login', query: { message: 'session-expired' } });
+      return Promise.reject(error); // 必须返回错误信息
     } else if (error.response?.status === 404) {
       ElMessage.error('请求的资源不存在');
     } else if (error.response?.status >= 500) {

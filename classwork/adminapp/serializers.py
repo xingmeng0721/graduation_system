@@ -209,11 +209,12 @@ class MutualSelectionEventSerializer(serializers.ModelSerializer):
     class Meta:
         model = MutualSelectionEvent
         fields = ['event_id', 'event_name', 'stu_start_time', 'stu_end_time',
-                  'tea_start_time', 'tea_end_time', 'teacher_choice_limit',
+                  'tea_start_time', 'tea_end_time', 'teacher_choice_limit','group_member_limit',
                   'teachers', 'students']
 
         extra_kwargs = {
-            'teacher_choice_limit': {'required': False}  # 默认为5，非必填
+            'teacher_choice_limit': {'required': False} , # 默认为 5，非必
+            'group_member_limit': {'required': False},  # 默认为5，非必填
         }
 
     def validate(self, data):
@@ -283,8 +284,9 @@ class MutualSelectionEventListSerializer(serializers.ModelSerializer):
         fields = [
             'event_id', 'event_name', 'stu_start_time', 'stu_end_time',
             'tea_start_time', 'tea_end_time', 'teacher_choice_limit', 'status',
-            'teacher_count', 'student_count', 'teachers', 'students'
+            'teacher_count', 'student_count', 'group_member_limit','teachers', 'students'
         ]
+
 
     def get_status(self, obj: MutualSelectionEvent) -> str:
         now = timezone.now()
