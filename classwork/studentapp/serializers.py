@@ -14,7 +14,7 @@ class StudentProfileSerializer(serializers.ModelSerializer):
     confirm_password = serializers.CharField(write_only=True, required=False, allow_blank=True,
                                              style={'input_type': 'password'})
 
-    major = serializers.StringRelatedField(read_only=True)
+    major = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = Student
@@ -22,7 +22,7 @@ class StudentProfileSerializer(serializers.ModelSerializer):
             'stu_id', 'stu_no', 'stu_name', 'grade', 'phone', 'major', 'email',
             'old_password', 'new_password', 'confirm_password'
         ]
-        read_only_fields = ['stu_id', 'stu_no', 'stu_name', 'grade', 'major']
+        read_only_fields = ['stu_id', 'stu_no', 'stu_name']
 
     def validate(self, data):
         """
@@ -41,7 +41,15 @@ class StudentProfileSerializer(serializers.ModelSerializer):
             if new_password != confirm_password:
                 raise serializers.ValidationError({'confirm_password': '两次输入的新密码不一致。'})
 
+        major_name = data.get('major')
+        if major_name:
+            major_obj = Major.objects.filter(major_name=major_name).first()
+            if not major_obj:
+                raise serializers.ValidationError({'major': '专业不存在，请检查输入的名称。'})
+            data['major'] = major_obj
+
         return data
+
 
     def update(self, instance, validated_data):
         """

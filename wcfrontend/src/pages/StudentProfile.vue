@@ -53,12 +53,23 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="年级">
-              <el-input v-model="student.grade" disabled />
+              <el-input
+                v-if="isEditing"
+                v-model="editableStudent.grade"
+                placeholder="请输入年级"
+              />
+              <el-input v-else :value="student.grade" disabled />
             </el-form-item>
           </el-col>
+
           <el-col :span="12">
             <el-form-item label="专业">
-              <el-input :value="student.major || '未分配'" disabled />
+              <el-input
+                v-if="isEditing"
+                v-model="editableStudent.major"
+                placeholder="请输入专业"
+              />
+              <el-input v-else :value="student.major || '未分配'" disabled />
             </el-form-item>
           </el-col>
         </el-row>
@@ -168,6 +179,8 @@ const saveError = ref(null)
 const saveSuccess = ref(null)
 
 const editableStudent = reactive({
+  grade: '',
+  major: '',
   phone: '',
   email: '',
   old_password: '',
@@ -212,6 +225,8 @@ onMounted(async () => {
 })
 
 const startEditing = () => {
+  editableStudent.grade = student.value.grade
+  editableStudent.major = student.value.major
   editableStudent.phone = student.value.phone || ''
   editableStudent.email = student.value.email || ''
   editableStudent.old_password = ''

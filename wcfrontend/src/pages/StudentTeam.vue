@@ -245,7 +245,8 @@
 >
   <el-form @submit.prevent="handleUpdateTeamInfo" label-width="100px">
     <el-form-item label="团队名称">
-      <el-input v-model="editTeam.group_name" placeholder="团队名称" />
+      <el-input v-model="editTeam.group_name" placeholder="团队名称"
+      />
     </el-form-item>
         <el-form-item label="项目标题">
           <el-input
@@ -262,10 +263,10 @@
           />
         </el-form-item>
       </el-form>
-      <template #footer>
-        <el-button @click="isProjectModalVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleUpdateProjectInfo">保存项目信息</el-button>
-      </template>
+<template #footer>
+  <el-button @click="isTeamEditModalVisible = false">取消</el-button>
+  <el-button type="primary" @click="handleUpdateTeamInfo">保存团队信息</el-button>
+</template>
     </el-dialog>
 
     <!-- 选择导师对话框 -->
@@ -561,6 +562,7 @@ const openTeamEditModal = () => {
 }
 
 const handleUpdateTeamInfo = async () => {
+    if (!validateGroupName(editTeam.group_name)) return
   try {
     const payload = {
       group_name: editTeam.group_name,
@@ -726,12 +728,9 @@ const openAllTeamsModal = async () => {
 
 // 业务操作
 const handleCreateTeam = async () => {
-  if (!newTeam.value.group_name.trim()) {
-    ElMessage.warning('团队名称不能为空')
-    return
-  }
+  if (!validateGroupName(newTeam.value.group_name)) return
   try {
-    await api.createTeam(newTeam.value)
+    await api.createTeam({ group_name: newTeam.value.group_name })
     ElMessage.success('团队创建成功！')
     await fetchDashboardData()
   } catch (err) {
@@ -769,6 +768,27 @@ const handleUpdateAdvisors = async () => {
   } catch (err) {
     ElMessage.error(`更新失败: ${err.response?.data?.error || '请检查输入'}`)
   }
+}
+
+const validateGroupName = (name) => {
+  const pattern = /^[\u4e00-\u9fa5a-zA-Z0-9_ ]{1,10}$/
+
+  if (!name || name.trim() === '') {
+    ElMessage.error('团队名称不能为空')
+    return false
+  }
+
+  if (name.length > 10) {
+    ElMessage.error('团队名称不能超过 10 个字符')
+    return false
+  }
+
+  if (!pattern.test(name)) {
+    ElMessage.error('团队名称包含非法字符，只能使用中文、英文、数字、下划线和空格')
+    return false
+  }
+
+  return true
 }
 
 const handleJoinTeam = async (teamId) => {

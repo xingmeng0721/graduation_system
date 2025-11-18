@@ -311,7 +311,7 @@ class TeamViewSet(viewsets.GenericViewSet):
 
     @action(detail=False, methods=['put'], url_path='my-team/update')
     def update_my_team(self, request):
-        # ✅ 修正：变量命名统一使用 student
+        print("DEBUG request.data: ", request.data)
         student = request.user
         if not isinstance(student, Student):
             return Response(
@@ -333,15 +333,11 @@ class TeamViewSet(viewsets.GenericViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        serializer = self.get_serializer(
-            group,
-            data=request.data,
-            partial=True,
-            context={'active_event': active_event}
-        )
+        serializer = GroupCreateUpdateSerializer(group, data=request.data, partial=True,
+                                                 context={'active_event': active_event})
         serializer.is_valid(raise_exception=True)
         serializer.save()
-
+        group.refresh_from_db()
         return Response(GroupDetailSerializer(group).data)
 
     @action(detail=False, methods=['post'], url_path='my-team/remove-member')

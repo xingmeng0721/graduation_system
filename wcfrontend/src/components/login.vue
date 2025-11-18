@@ -191,6 +191,12 @@
         </div>
       </template>
     </el-dialog>
+
+        <div class="beian-footer">
+      <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">
+        粤ICP备2025495465号-1
+      </a>
+    </div>
   </div>
 </template>
 
@@ -475,6 +481,40 @@ onMounted(() => {
     width: 100%;
     margin: 16px;
     padding: 24px;
+  }
+}
+
+.beian-footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 12px;
+  text-align: center;
+  font-size: 0.95em;
+  color: #999;
+  background: transparent;
+  z-index: 10;
+  pointer-events: none;
+  /* 适应深色模式：你可再根据主题变更颜色 */
+}
+.beian-footer a {
+  pointer-events: auto;
+  color: #999;
+  text-decoration: none;
+  transition: color 0.2s;
+  opacity: 0.85;
+}
+.beian-footer a:hover {
+  color: #188aec;
+  text-decoration: underline;
+  opacity: 1;
+}
+
+/* 如果登录框高度不够，手机版可以微调 */
+@media (max-width: 768px) {
+  .beian-footer {
+    font-size: 0.9em;
+    bottom: 8px;
   }
 }
 </style>
