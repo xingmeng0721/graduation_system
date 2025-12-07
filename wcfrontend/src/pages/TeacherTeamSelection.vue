@@ -2,433 +2,501 @@
   <div class="page-container">
     <div class="page-header">
       <h2>选择指导团队</h2>
-      <el-tag v-if="activeEvent" type="primary" size="large">
+      <el-tag
+        v-if="activeEvent"
+        type="primary"
+        size="large"
+      >
         {{ activeEvent.event_name }} - 截止: {{ formatDate(activeEvent.end_time) }}
       </el-tag>
     </div>
+    <div v-if="isLoading" class="loading-container" v-loading="isLoading"><p>正在加载数据...</p></div>
+    <el-alert v-if="error" :title="error" type="error" :closable="false" show-icon />
 
-    <!-- 加载状态 -->
-    <div v-if="isLoading" class="loading-container">
-      <el-icon class="is-loading" :size="40"><Loading /></el-icon>
-      <p>正在加载数据...</p>
-    </div>
-
-    <!-- 错误提示 -->
-    <el-alert
-      v-if="error"
-      :title="error"
-      type="error"
-      :closable="false"
-      show-icon
-    />
-
-    <!-- 主要内容 -->
     <template v-if="!isLoading && activeEvent">
-      <!-- 志愿选择面板 -->
-      <el-card class="selection-card" shadow="never">
-        <template #header>
-          <div class="card-header">
-            <span>我的志愿小组 (最多可选择 {{ activeEvent.teacher_choice_limit }} 个)</span>
-            <el-button type="primary" @click="savePreferences">
-              保存我的志愿
-            </el-button>
-          </div>
-        </template>
-
-        <el-row :gutter="20">
-          <el-col
-            v-for="rank in choiceLimitRange"
-            :key="rank"
-            :span="24 / Math.min(choiceLimitRange.length, 3)"
-          >
-            <el-form-item :label="getPreferenceText(rank)" label-width="100px">
-              <el-select
-                v-model="preferences[rank]"
-                placeholder="请选择团队"
+      <div class="main-layout">
+        <!-- 左侧团队列表 -->
+        <div class="team-list-section">
+          <div class="list-controls">
+            <h3>可选团队列表 ({{ filteredTeams.length }})</h3>
+            <div class="filters">
+              <!-- 搜索框 -->
+              <el-input
+                v-model="searchQuery"
+                placeholder="搜索项目或队长"
                 clearable
-                style="width: 100%;"
+                :prefix-icon="Search"
+                class="filter-input"
+              />
+              <!-- 只看我的团队 -->
+              <el-checkbox
+                v-model="showOnlyStudentPreferred"
+                size="large"
+                border
+                class="filter-checkbox"
               >
-                <el-option
-                  v-for="team in teams"
-                  :key="team.group_id"
-                  :label="team.group_name"
-                  :value="team.group_id"
-                  :disabled="isTeamSelectedInOtherPreferences(team.group_id, rank)"
-                />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-      </el-card>
+                只看选择我的团队
+              </el-checkbox>
+              <!-- 保存志愿 -->
+              <el-button
+                type="primary"
+                @click="savePreferences"
+                class="save-button"
+              >
+                <el-icon><Select /></el-icon> 保存所有志愿
+              </el-button>
+            </div>
+          </div>
 
-      <!-- 团队信息列表 -->
-      <div class="teams-grid">
-        <el-card
-          v-for="team in teams"
-          :key="team.group_id"
-          :class="['team-card', { 'is-selected': getRankForTeam(team.group_id) }]"
-          shadow="hover"
-        >
-          <template #header>
-            <div class="team-card-header">
-              <h3>{{ team.group_name }}</h3>
-              <div class="team-tags">
-                <el-tag
-                  v-if="getRankForTeam(team.group_id)"
-                  :type="getPreferenceTagType(getRankForTeam(team.group_id))"
-                  size="small"
-                >
-                  {{ getPreferenceText(getRankForTeam(team.group_id)) }}
-                </el-tag>
-                <el-tag v-else-if="team.my_preference_rank" type="info" size="small">
-                  学生志愿
-                </el-tag>
-                <!-- ✅ 优化：查看完整信息按钮放在标签旁边 -->
+          <div class="team-vertical-list">
+            <div
+              v-for="team in filteredTeams"
+              :key="team.group_id"
+              :class="['team-list-item', { 'is-selected': team.my_preference_rank }]"
+            >
+              <div class="item-content">
+                <div class="item-main">
+                  <h4 class="item-project-title">{{ team.project_title || '未命名项目' }}</h4>
+                  <p class="item-project-desc">
+                    {{ team.project_description_short || '该团队尚未填写项目简介。' }}
+                  </p>
+                  <div class="item-meta">
+                    <span><el-icon><User /></el-icon>队长: {{ team.captain.stu_name }}</span>
+                    <span><el-icon><TrendCharts /></el-icon>成员: {{ team.member_count }}人</span>
+                  </div>
+                </div>
+                <div class="item-tags">
+                  <el-tag
+                    v-if="team.my_preference_rank"
+                    :type="preferenceTagTypes[team.my_preference_rank - 1] || 'info'"
+                    effect="dark"
+                  >
+                    我的第{{ team.my_preference_rank }}志愿
+                  </el-tag>
+                  <el-tag
+                    v-if="team.student_preference_rank"
+                    type="success"
+                    effect="light"
+                  >
+                    学生第{{ team.student_preference_rank }}志愿
+                  </el-tag>
+                </div>
+              </div>
+              <div class="item-actions">
                 <el-button
                   type="primary"
-                  link
-                  size="small"
-                  @click="viewTeamDetail(team.group_id)"
+                  @click="openPreferenceDialog(team)"
                 >
-                  查看完整信息
+                  查看详情 & 选择志愿
                 </el-button>
               </div>
             </div>
-          </template>
-
-          <!-- 项目信息 -->
-          <div class="team-section">
-            <h4>{{ team.project_title || '未填写项目标题' }}</h4>
-            <p class="project-description">
-              {{ team.project_description_short || team.project_description || '该团队尚未填写项目简介。' }}
-            </p>
           </div>
+          <el-empty v-if="filteredTeams.length === 0" description="没有找到符合条件的团队" />
+        </div>
 
-          <el-divider />
-
-          <!-- 团队成员 -->
-          <div class="team-section">
-            <div class="section-title">
-              <span>团队成员</span>
-              <el-tag size="small" type="info">{{ team.member_count }}人</el-tag>
-            </div>
-            <div class="members-list">
-              <div
-                v-for="member in team.members"
-                :key="member.stu_id"
-                class="member-item"
-              >
-                <div class="member-info">
-                  <span class="member-name">{{ member.stu_name }}</span>
-                  <span class="member-id">{{ member.stu_no }}</span>
-                </div>
-                <el-tag v-if="member.is_captain" size="small" type="warning">
-                  队长
-                </el-tag>
+        <!-- 右侧志愿选择 -->
+        <div class="preferences-section">
+          <h3>志愿选择</h3>
+          <div class="preferences-cards">
+            <el-card
+              v-for="rank in choiceLimitRange"
+              :key="rank"
+              :class="['preference-card', { 'has-selection': preferences[rank] }]"
+              shadow="hover"
+            >
+              <div class="preference-card-header">
+                <h4>{{ ['第一', '第二', '第三', '第四', '第五'][rank - 1] || rank }}志愿</h4>
+                <el-tag
+                  :type="preferenceTagTypes[rank - 1] || 'info'"
+                  size="small"
+                >志愿 {{ rank }}</el-tag>
               </div>
-            </div>
+              <div class="preference-card-body">
+                <div
+                  v-if="preferences[rank] && getTeamById(preferences[rank])"
+                  class="selected-team-info"
+                >
+                  <div class="selected-team-details">
+                    <span class="selected-project-title">{{ getTeamById(preferences[rank]).project_title || '未命名项目' }}</span>
+                    <span class="selected-captain-name">队长: {{ getTeamById(preferences[rank]).captain.stu_name }}</span>
+                  </div>
+                  <el-button
+                    type="danger"
+                    circle
+                    :icon="Close"
+                    @click="clearPreference(rank)"
+                  />
+                </div>
+                <div v-else class="empty-selection">
+                  <el-icon :size="40" color="#c0c4cc"><OfficeBuilding /></el-icon>
+                  <span class="empty-text">待选择</span>
+                </div>
+              </div>
+            </el-card>
           </div>
-        </el-card>
+        </div>
       </div>
     </template>
 
-    <!-- 无活动状态 -->
     <el-card v-if="!isLoading && !activeEvent" class="no-activity-card" shadow="never">
-      <el-empty description="当前没有正在进行的互选活动">
-        <template #image>
-          <el-icon :size="80" color="#909399"><InfoFilled /></el-icon>
-        </template>
-        <p style="margin: 20px 0;">请耐心等待管理员开启新的活动</p>
-      </el-empty>
+      <el-empty description="当前没有正在进行的互选活动" />
     </el-card>
 
-    <!-- ✅ 团队详情对话框 -->
-    <TeacherTeamDetailDialog
-      v-model="showTeamDetail"
-      :group-id="currentTeamId"
+    <TeacherPreferenceDialog
+      v-if="activeEvent"
+      v-model="isDetailModalVisible"
+      :team="selectedTeam"
+      :preferences="preferences"
+      :choice-limit="activeEvent.teacher_choice_limit"
+      @update:preferences="handlePreferencesUpdate"
     />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, reactive, computed } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { Loading, InfoFilled } from '@element-plus/icons-vue'
-import api from '../services/api'
-import TeacherTeamDetailDialog from '../components/TeacherTeamDetailDialog.vue'
+import { ref, onMounted, reactive, computed } from 'vue';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import { Loading, Close, User, TrendCharts, Select, Search, OfficeBuilding } from '@element-plus/icons-vue';
+import api from '../services/api';
+// ✅ 引入新组件
+import TeacherPreferenceDialog from '../components/TeacherPreferenceDialog.vue';
 
-const teams = ref([])
-const activeEvent = ref(null)
-const isLoading = ref(true)
-const error = ref(null)
-const preferences = reactive({})
-
-// ✅ 团队详情弹窗状态
-const showTeamDetail = ref(false)
-const currentTeamId = ref(null)
+const teams = ref([]);
+const activeEvent = ref(null);
+const isLoading = ref(true);
+const error = ref(null);
+const preferences = reactive({});
+const isDetailModalVisible = ref(false);
+const selectedTeam = ref(null);
+const showOnlyStudentPreferred = ref(false);
+const searchQuery = ref('');
+const preferenceTagTypes = ['danger', 'warning', 'success', 'primary', 'info'];
 
 const choiceLimitRange = computed(() => {
-  if (!activeEvent.value) return []
-  const limit = activeEvent.value.teacher_choice_limit || 5
-  return Array.from({ length: limit }, (_, i) => i + 1)
-})
+  if (!activeEvent.value) return [];
+  return Array.from({ length: activeEvent.value.teacher_choice_limit || 5 }, (_, i) => i + 1);
+});
+
+const sortedTeams = computed(() => {
+  return [...teams.value].sort((a, b) => {
+    const rankA = a.my_preference_rank || 99;
+    const rankB = b.my_preference_rank || 99;
+    const studentPrefA = a.student_preference_rank || 99;
+    const studentPrefB = b.student_preference_rank || 99;
+    if (rankA !== 99 || rankB !== 99) return rankA - rankB;
+    if (studentPrefA !== 99 || studentPrefB !== 99) return studentPrefA - studentPrefB;
+    return a.group_id - b.group_id;
+  });
+});
+
+const filteredTeams = computed(() => {
+  let tempTeams = sortedTeams.value;
+  if (showOnlyStudentPreferred.value) tempTeams = tempTeams.filter(team => team.student_preference_rank);
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase();
+    tempTeams = tempTeams.filter(team =>
+      (team.project_title?.toLowerCase().includes(query)) ||
+      (team.captain.stu_name?.toLowerCase().includes(query))
+    );
+  }
+  return tempTeams;
+});
 
 const fetchDashboard = async () => {
-  isLoading.value = true
-  error.value = null
+  isLoading.value = true; error.value = null;
   try {
-    const response = await api.getTeacherDashboard()
-    teams.value = response.data.teams
-    activeEvent.value = response.data.active_event
-    Object.assign(preferences, response.data.preferences)
+    const response = await api.getTeacherDashboard();
+    teams.value = response.data.teams;
+    activeEvent.value = response.data.active_event;
+    if (activeEvent.value) {
+      choiceLimitRange.value.forEach(rank => {
+        preferences[rank] = response.data.preferences[rank] || null;
+      });
+    }
   } catch (err) {
-    error.value = '加载数据失败，请刷新页面重试'
-    console.error(err)
+    error.value = '加载数据失败，请刷新页面重试。';
   } finally {
-    isLoading.value = false
+    isLoading.value = false;
   }
-}
+};
 
-onMounted(fetchDashboard)
+onMounted(fetchDashboard);
 
-// ✅ 查看团队详情方法
-const viewTeamDetail = (groupId) => {
-  currentTeamId.value = groupId
-  showTeamDetail.value = true
-}
+// ✅ 修改：打开新的弹窗
+const openPreferenceDialog = (team) => {
+  selectedTeam.value = team;
+  isDetailModalVisible.value = true;
+};
 
 const savePreferences = async () => {
   try {
-    await ElMessageBox.confirm(
-      '确定要保存当前的志愿选择吗？这将覆盖您之前的选择。',
-      '提示',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'info'
-      }
-    )
-
-    const preferencesToSubmit = {}
-    for (const rank in preferences) {
-      if (preferences[rank]) {
-        preferencesToSubmit[rank] = preferences[rank]
-      }
-    }
-
-    await api.setTeacherPreferences(preferencesToSubmit)
-    ElMessage.success('志愿保存成功！')
-    await fetchDashboard()
+    await ElMessageBox.confirm('确定要保存当前的志愿选择吗？', '提示', { type: 'info' });
+    const prefsToSubmit = {};
+    Object.keys(preferences).forEach(rank => { if (preferences[rank]) prefsToSubmit[rank] = preferences[rank]; });
+    await api.setTeacherPreferences(prefsToSubmit);
+    ElMessage.success('志愿保存成功！');
+    await fetchDashboard();
   } catch (err) {
-    if (err !== 'cancel') {
-      ElMessage.error(`保存失败: ${err.response?.data?.error || '未知错误'}`)
-    }
+    if (err !== 'cancel') ElMessage.error(`保存失败: ${err.response?.data?.error || '未知错误'}`);
   }
-}
+};
 
-const isTeamSelectedInOtherPreferences = (teamId, currentRank) => {
-  if (!teamId) return false
-  for (const rank in preferences) {
-    if (parseInt(rank) !== currentRank && preferences[rank] === teamId) {
-      return true
-    }
-  }
-  return false
-}
+const clearPreference = (rank) => {
+  preferences[rank] = null;
+};
 
-const getRankForTeam = (teamId) => {
-  for (const rank in preferences) {
-    if (preferences[rank] === teamId) {
-      return parseInt(rank)
-    }
-  }
-  return null
-}
+// ✅ 新增：处理子组件传回的更新，实现即时同步
+const handlePreferencesUpdate = (newPreferences) => {
+  Object.assign(preferences, newPreferences);
+  // 手动更新列表中的 my_preference_rank 以实现即时刷新
+  teams.value.forEach(team => {
+      const rank = Object.keys(newPreferences).find(key => newPreferences[key] === team.group_id);
+      team.my_preference_rank = rank ? parseInt(rank) : null;
+  });
+};
 
-const getPreferenceText = (rank) => {
-  const numbers = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十']
-  return `第${numbers[rank - 1] || rank}志愿`
-}
-
-const getPreferenceTagType = (rank) => {
-  const types = ['danger', 'warning', 'success', 'primary', 'info']
-  return types[rank - 1] || 'info'
-}
-
-const formatDate = (dateString) => {
-  if (!dateString) return 'N/A'
-  return new Date(dateString).toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
+const getTeamById = (teamId) => teams.value.find(t => t.group_id === teamId);
+const formatDate = (dateString) => dateString ? new Date(dateString).toLocaleString('zh-CN') : 'N/A';
 </script>
 
+
 <style scoped>
+
+.main-layout {
+  display: flex;
+  gap: 20px;
+}
+
+/* 左侧团队列表 */
+.team-list-section {
+  flex: 3;
+  display: flex;
+  flex-direction: column;
+}
+
+.team-vertical-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* 右侧志愿选择 */
+.preferences-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.preferences-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.team-vertical-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px; /* 卡片之间几乎无间距 */
+}
+
+.team-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch; /* 让左右内容对齐 */
+  padding: 6px 10px; /* 极小内边距 */
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 4px;
+  background-color: #fff;
+  transition: all 0.15s;
+  min-height: 56px;
+}
+
+.team-list-item:hover {
+  background-color: var(--el-fill-color-light);
+  border-color: var(--el-color-primary-light-7);
+}
+
+.team-list-item.is-selected {
+  border-left: 3px solid var(--el-color-primary);
+  background-color: var(--el-color-primary-light-9);
+}
+
+.item-content {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center; /* 垂直居中 */
+  gap: 6px;
+  overflow: hidden;
+}
+
+.item-main {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.item-project-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--el-text-color-primary);
+}
+
+.item-project-desc {
+  font-size: 14px;
+  color: #606266;
+  margin: 2px 0 0 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.item-meta {
+  display: flex;
+  gap: 10px;
+  font-size: 11.5px;
+  color: #909399;
+  margin-top: 2px;
+}
+
+.item-meta span {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.item-tags {
+  display: flex;
+  flex-direction: column;
+  justify-content: center; /* 垂直居中标签 */
+  align-items: center;
+  gap: 4px;
+  min-width: 90px;
+}
+
+.item-actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding-left: 6px;
+}
+
+/* 页面整体布局 */
 .page-container {
-  max-width: 1600px;
+  padding: 12px 16px;
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 12px;
 }
 
 .page-header h2 {
   margin: 0;
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 600;
-  color: #303133;
+}
+
+.preferences-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.preference-card {
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+.preference-card-header h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.preference-card-body {
+  min-height: 60px;
+  padding-top: 4px;
+}
+
+.list-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.list-controls h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.filters {
+  display: flex;
+  align-items: center;
+}
+.filter-input, .filter-checkbox, .save-button {
+  height: 40px; /* 设置统一的高度 */
+  line-height: 38px; /* 文案居中 */
+}
+
+.filter-input {
+  flex-grow: 1;
+  width: auto; /* 让搜索框自适应 */
+}
+
+.filter-checkbox {
+  flex-shrink: 0; /* 防止缩放 */
 }
 
 .loading-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px;
-  color: #909399;
-}
-
-.loading-container p {
-  margin-top: 16px;
-}
-
-.selection-card {
-  border-radius: 8px;
-  margin-bottom: 24px;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
-}
-
-.teams-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-  gap: 20px;
-}
-
-.team-card {
-  border-radius: 8px;
-  transition: all 0.3s;
-}
-
-.team-card.is-selected {
-  border: 2px solid #409eff;
-  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.2);
-}
-
-.team-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.team-card-header h3 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #409eff;
-}
-
-.team-tags {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.team-section {
-  margin-bottom: 16px;
-}
-
-.team-section:last-child {
-  margin-bottom: 0;
-}
-
-.team-section h4 {
-  margin: 0 0 12px 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
-}
-
-.project-description {
-  color: #606266;
-  line-height: 1.6;
-  margin: 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.section-title {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-  font-weight: 600;
-  color: #606266;
-}
-
-.members-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-.member-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px;
-  background-color: #f5f7fa;
-  border-radius: 4px;
-}
-
-.member-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.member-name {
-  font-size: 14px;
-  font-weight: 500;
-  color: #303133;
-}
-
-.member-id {
-  font-size: 12px;
+  text-align: center;
+  padding: 20px;
   color: #909399;
 }
 
 .no-activity-card {
-  border-radius: 8px;
+  text-align: center;
 }
 
-@media (max-width: 768px) {
-  .page-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
+/* 选中卡片信息栏 */
+.selected-team-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
 
-  .teams-grid {
-    grid-template-columns: 1fr;
-  }
+.selected-team-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.selected-project-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.selected-captain-name {
+  font-size: 12px;
+  color: #909399;
+}
+
+.empty-selection {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #c0c4cc;
+}
+
+.empty-text {
+  font-size: 13px;
+  font-weight: 500;
 }
 </style>

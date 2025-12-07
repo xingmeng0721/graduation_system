@@ -26,6 +26,10 @@ class MutualSelectionEvent(models.Model):
         verbose_name='教师可选小组数',
         help_text='每个导师在此活动中最多可以选择的小组数量'
     )
+    group_member_limit = models.PositiveIntegerField(
+        default=5,
+        verbose_name="团队成员上限"
+    )
 
     # 参与互选的教师和学生
     teachers = models.ManyToManyField(teacher, related_name='mutual_selection_events', verbose_name='参与教师')

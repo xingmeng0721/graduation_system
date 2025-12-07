@@ -137,6 +137,14 @@
           </el-col>
         </el-row>
 
+        <el-row :gutter="20">
+        <el-col :span="12">
+          <el-form-item label="实习地点">
+            <el-input v-model="newStudent.internship_location" placeholder="选填" clearable />
+          </el-form-item>
+        </el-col>
+        </el-row>
+
         <el-alert
           v-if="addStudentError"
           :title="addStudentError"
@@ -243,6 +251,12 @@
             {{ row.email || '无' }}
           </template>
         </el-table-column>
+
+        <el-table-column prop="internship_location" label="实习地点" min-width="150">
+        <template #default="{ row }">
+          {{ row.internship_location || '无' }}
+        </template>
+        </el-table-column>
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" size="small" link @click="openEditModal(row)">
@@ -317,6 +331,15 @@
           </el-col>
         </el-row>
 
+
+        <el-row :gutter="20">
+        <el-col :span="12">
+          <el-form-item label="实习地点">
+            <el-input v-model="editingStudent.internship_location" />
+          </el-form-item>
+        </el-col>
+        </el-row>
+
         <el-form-item label="新密码">
           <el-input
             v-model="editingStudent.password"
@@ -365,7 +388,8 @@ const newStudent = ref({
   grade: '',
   phone: '',
   major: '',
-  email: ''
+  email: '',
+  internship_location: ''
 })
 
 // 批量注册
@@ -466,7 +490,7 @@ const addStudent = async () => {
 
 // 编辑学生
 const openEditModal = (student) => {
-  editingStudent.value = { ...student, major: student.major_name, password: '' }
+  editingStudent.value = { ...student, major: student.major_name, password: '',internship_location: student.internship_location || '' }
   editError.value = null
   editDialogVisible.value = true
 }

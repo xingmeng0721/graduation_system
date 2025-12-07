@@ -24,20 +24,12 @@
       <template #header>
         <div class="card-header">
           <span>基本信息</span>
-          <el-button
-            v-if="!isEditing"
-            type="primary"
-            @click="startEditing"
-          >
+          <el-button v-if="!isEditing" type="primary" @click="startEditing">
             修改信息
           </el-button>
           <div v-else class="edit-actions">
             <el-button @click="cancelEditing">取消</el-button>
-            <el-button
-              type="primary"
-              @click="saveProfile"
-              :loading="isSaving"
-            >
+            <el-button type="primary" @click="saveProfile" :loading="isSaving">
               保存
             </el-button>
           </div>
@@ -61,12 +53,23 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="年级">
-              <el-input v-model="student.grade" disabled />
+              <el-input
+                v-if="isEditing"
+                v-model="editableStudent.grade"
+                placeholder="请输入年级"
+              />
+              <el-input v-else :value="student.grade" disabled />
             </el-form-item>
           </el-col>
+
           <el-col :span="12">
             <el-form-item label="专业">
-              <el-input :value="student.major || '未分配'" disabled />
+              <el-input
+                v-if="isEditing"
+                v-model="editableStudent.major"
+                placeholder="请输入专业"
+              />
+              <el-input v-else :value="student.major || '未分配'" disabled />
             </el-form-item>
           </el-col>
         </el-row>
@@ -84,17 +87,35 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="电子邮箱">
-              <el-input
-                v-if="isEditing"
+          <el-form-item label="电子邮箱">
+            <div v-if="isEditing" class="email-wrapper">
+              <el-autocomplete
                 v-model="editableStudent.email"
-                placeholder="请输入电子邮箱"
+                :fetch-suggestions="querySearchEmail"
+                placeholder="请输入邮箱，例如 zhangsan@qq.com"
+                class="email-input"
                 clearable
+                :trigger-on-focus="false"
               />
-              <el-input v-else :value="student.email || '未填写'" disabled />
-            </el-form-item>
-          </el-col>
+            </div>
+            <el-input v-else :value="student.email || '未填写'" disabled />
+          </el-form-item>
+        </el-col>
         </el-row>
+
+        <el-row :gutter="20">
+        <el-col :span="12">
+          <el-form-item label="实习地点">
+            <el-input
+              v-if="isEditing"
+              v-model="editableStudent.internship_location"
+              placeholder="请输入实习地点"
+              clearable
+            />
+            <el-input v-else :value="student.internship_location || '未填写'" disabled />
+          </el-form-item>
+        </el-col>
+      </el-row>
 
         <!-- 密码修改区域 -->
         <template v-if="isEditing">
@@ -172,18 +193,46 @@ const saveError = ref(null)
 const saveSuccess = ref(null)
 
 const editableStudent = reactive({
+  grade: '',
+  major: '',
   phone: '',
   email: '',
+  internship_location: '',
   old_password: '',
   new_password: '',
   confirm_password: ''
 })
 
+const emailSuffixes = [
+  '@qq.com',
+  '@163.com',
+  '@gmail.com',
+  '@outlook.com',
+  '@126.com',
+  '@stu.edu.cn',
+  '@hotmail.com'
+]
+
+const querySearchEmail = (queryString, cb) => {
+  const val = (queryString || '').trim()
+  if (!val) { cb([]); return }
+  if (val.includes('@')) {
+    const [prefix, maybeDomain] = val.split('@')
+    const suggestions = emailSuffixes
+      .filter(s => !maybeDomain || s.slice(1).startsWith(maybeDomain))
+      .map(s => ({ value: `${prefix}${s}` }))
+    cb(suggestions.length ? suggestions : [])
+    return
+  }
+  const suggestions = emailSuffixes.map(s => ({ value: `${val}${s}` }))
+  cb(suggestions)
+}
+
 onMounted(async () => {
   try {
     const response = await api.getStudentProfile()
     student.value = response.data
-  } catch (err) {
+  } catch {
     error.value = '无法加载个人信息，请刷新页面或稍后再试'
   } finally {
     loading.value = false
@@ -191,34 +240,54 @@ onMounted(async () => {
 })
 
 const startEditing = () => {
+  editableStudent.grade = student.value.grade
+  editableStudent.major = student.value.major
   editableStudent.phone = student.value.phone || ''
   editableStudent.email = student.value.email || ''
+  editableStudent.internship_location = student.value.internship_location || ''
   editableStudent.old_password = ''
   editableStudent.new_password = ''
   editableStudent.confirm_password = ''
-
   isEditing.value = true
   saveError.value = null
   saveSuccess.value = null
 }
 
-const cancelEditing = () => {
-  isEditing.value = false
+const cancelEditing = () => { isEditing.value = false }
+
+const validateInputs = () => {
+  const phoneRegex = /^1\d{10}$/
+  const emailRegex = /^[A-Za-z0-9](?:[A-Za-z0-9._%+-]*[A-Za-z0-9])?@[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z]{2,63})+$/
+  const passwordRegex = /^[A-Za-z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?]+$/
+
+  if (editableStudent.phone && !phoneRegex.test(editableStudent.phone)) {
+    ElMessage.error('请输入有效的手机号（11位数字）'); return false
+  }
+  if (editableStudent.email && !emailRegex.test(editableStudent.email)) {
+    ElMessage.error('请输入正确的电子邮箱格式'); return false
+  }
+  if (editableStudent.new_password) {
+    if (!passwordRegex.test(editableStudent.new_password)) {
+      ElMessage.error('密码包含非法字符，请勿使用空格或中文'); return false
+    }
+    if (editableStudent.new_password !== editableStudent.confirm_password) {
+      ElMessage.error('两次输入的新密码不一致'); return false
+    }
+  }
+  return true
 }
 
 const saveProfile = async () => {
+  if (!validateInputs()) return
   isSaving.value = true
   saveError.value = null
   saveSuccess.value = null
-
   const dataToUpdate = { ...editableStudent }
-
   if (!dataToUpdate.new_password && !dataToUpdate.old_password) {
     delete dataToUpdate.old_password
     delete dataToUpdate.new_password
     delete dataToUpdate.confirm_password
   }
-
   try {
     const response = await api.updateStudentProfile(dataToUpdate)
     student.value = response.data
@@ -228,66 +297,39 @@ const saveProfile = async () => {
     setTimeout(() => { saveSuccess.value = null }, 2000)
   } catch (err) {
     if (err.response && err.response.data) {
-      const errorDetails = Object.values(err.response.data).flat().join('\n')
-      saveError.value = `保存失败: ${errorDetails}`
+      saveError.value = `保存失败: ${Object.values(err.response.data).flat().join('\n')}`
     } else {
       saveError.value = '保存个人信息失败，请检查网络或稍后再试'
     }
     ElMessage.error(saveError.value)
-  } finally {
-    isSaving.value = false
-  }
+  } finally { isSaving.value = false }
 }
 </script>
 
 <style scoped>
-.page-container {
-  max-width: 900px;
+.page-container { max-width: 900px; }
+.page-header { margin-bottom: 20px; }
+.page-header h2 { margin:0; font-size:24px; font-weight:600; color:#303133; }
+.loading-container { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:60px; color:#909399; }
+.loading-container p { margin-top:16px; }
+.profile-card { border-radius:8px; }
+.card-header { display:flex; justify-content:space-between; align-items:center; font-size:16px; font-weight:600; color:#303133; }
+.edit-actions { display:flex; gap:12px; }
+.profile-form { margin-top:24px; }
+
+.email-wrapper {
+  width: 100%;
+}
+.email-input {
+  width: 100%;
+}
+.email-input :deep(.el-input__inner) {
+  height: 38px;
+  line-height: 38px;
+  font-size: 14px;
+  padding: 0 12px;
+  border-radius: 6px;
+  box-sizing: border-box;
 }
 
-.page-header {
-  margin-bottom: 20px;
-}
-
-.page-header h2 {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: #303133;
-}
-
-.loading-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px;
-  color: #909399;
-}
-
-.loading-container p {
-  margin-top: 16px;
-}
-
-.profile-card {
-  border-radius: 8px;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
-}
-
-.edit-actions {
-  display: flex;
-  gap: 12px;
-}
-
-.profile-form {
-  margin-top: 24px;
-}
 </style>

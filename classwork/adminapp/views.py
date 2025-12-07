@@ -32,6 +32,9 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.exceptions import TokenError
 
+from teamapp.views import is_admin
+
+
 
 class RegisterView(generics.CreateAPIView):
     """
@@ -520,7 +523,6 @@ class TeacherManagementViewSet(viewsets.ModelViewSet):
     教师管理视图集，支持搜索、创建、更新、删除和批量删除。
     """
     queryset = teacher.objects.all().order_by('teacher_id')
-
     filter_backends = [filters.SearchFilter]
     search_fields = ['teacher_no', 'teacher_name']
 
@@ -594,8 +596,8 @@ class StudentManagementViewSet(viewsets.ModelViewSet):
     ✅ 修正：学生管理视图集，支持多活动场景
     """
     queryset = Student.objects.select_related('major').prefetch_related(
-        'memberships__group__event',  # ✅ 改为 memberships（复数）
-        'led_groups__event'  # ✅ 改为 led_groups（复数）
+        'memberships__group__event',
+        'led_groups__event'
     ).all().order_by('stu_id')
 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
@@ -612,7 +614,7 @@ class StudentManagementViewSet(viewsets.ModelViewSet):
     @transaction.atomic
     def bulk_delete(self, request, *args, **kwargs):
         """
-        ✅ 修正：批量删除学生前，先处理多活动场景下的团队数据
+        批量删除学生前，先处理多活动场景下的团队数据
         """
         student_ids = request.data.get('ids')
 
@@ -622,7 +624,7 @@ class StudentManagementViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # ✅ 1. 找出这些学生在所有活动中担任队长的团队
+        #找出这些学生在所有活动中担任队长的团队
         groups_led_by_students = Group.objects.filter(captain_id__in=student_ids)
 
         for group in groups_led_by_students:
@@ -634,10 +636,10 @@ class StudentManagementViewSet(viewsets.ModelViewSet):
                 group.captain = None
                 group.save()
 
-        # ✅ 2. 删除这些学生在所有活动中的成员关系（级联会自动处理）
+        #删除这些学生在所有活动中的成员关系（级联会自动处理）
         GroupMembership.objects.filter(student_id__in=student_ids).delete()
 
-        # ✅ 3. 删除学生
+        #删除学生
         queryset = self.get_queryset().filter(stu_id__in=student_ids)
         deleted_count, _ = queryset.delete()
 
@@ -854,3 +856,5 @@ def refresh_admin_token(request):
             {'error': '刷新token失败'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+

@@ -11,7 +11,6 @@ class MultiModelBackend:
     """
     教师和学生认证后端 (最简版)。
     """
-
     def authenticate(self, request, username=None, password=None, **kwargs):
         # 如果调用时没有提供 'username' 参数，直接失败
         if username is None:

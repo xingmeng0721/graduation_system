@@ -101,10 +101,10 @@
         class="reset-form"
         @submit.prevent="handleSendCode"
       >
-        <el-form-item label="姓名">
+        <el-form-item label="学号">
           <el-input
-            v-model="resetInfo.stu_name"
-            placeholder="请输入您的姓名"
+            v-model="resetInfo.stu_no"
+            placeholder="请输入您的学号"
             clearable
           />
         </el-form-item>
@@ -191,6 +191,12 @@
         </div>
       </template>
     </el-dialog>
+
+        <div class="beian-footer">
+      <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">
+        粤ICP备2025495465号-1
+      </a>
+    </div>
   </div>
 </template>
 
@@ -210,7 +216,7 @@ const isLoading = ref(false)
 // 忘记密码弹窗状态
 const isForgotPasswordModalVisible = ref(false)
 const resetStep = ref(1)
-const resetInfo = ref({ stu_name: '', email: '', code: '', password: '' })
+const resetInfo = ref({ stu_no: '', email: '', code: '', password: '' })
 const resetError = ref(null)
 const isSendingCode = ref(false)
 const isResettingPassword = ref(false)
@@ -300,7 +306,7 @@ const handleLogin = async () => {
 const openForgotPasswordModal = () => {
   isForgotPasswordModalVisible.value = true
   resetStep.value = 1
-  resetInfo.value = { stu_name: '', email: '', code: '', password: '' }
+  resetInfo.value = { stu_no: '', email: '', code: '', password: '' }
   resetError.value = null
 }
 
@@ -312,8 +318,8 @@ const closeForgotPasswordModal = () => {
 
 // 发送验证码
 const handleSendCode = async () => {
-  if (!resetInfo.value.stu_name || !resetInfo.value.email) {
-    resetError.value = '请输入姓名和邮箱'
+  if (!resetInfo.value.stu_no || !resetInfo.value.email) {
+    resetError.value = '请输入学号和邮箱'
     return
   }
 
@@ -322,7 +328,7 @@ const handleSendCode = async () => {
 
   try {
     await api.sendStudentResetCode({
-      stu_name: resetInfo.value.stu_name,
+      stu_no: resetInfo.value.stu_no,
       email: resetInfo.value.email
     })
 
@@ -330,7 +336,7 @@ const handleSendCode = async () => {
     resetStep.value = 2
 
   } catch (err) {
-    resetError.value = err.response?.data?.error || '发送失败，请检查姓名和邮箱'
+    resetError.value = err.response?.data?.error || '发送失败，请检查学号和邮箱'
     console.error('Send code failed:', err)
   } finally {
     isSendingCode.value = false
@@ -352,7 +358,7 @@ const handleResetPassword = async () => {
 
     ElMessage.success('密码重置成功')
     closeForgotPasswordModal()
-    resetInfo.value = {stu_name: '', email: '', code: '', password: ''}
+    resetInfo.value = {stu_no: '', email: '', code: '', password: ''}
 
   } catch (err) {
     resetError.value = err.response?.data?.error || '重置失败，请检查验证码'
@@ -475,6 +481,40 @@ onMounted(() => {
     width: 100%;
     margin: 16px;
     padding: 24px;
+  }
+}
+
+.beian-footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 12px;
+  text-align: center;
+  font-size: 0.95em;
+  color: #999;
+  background: transparent;
+  z-index: 10;
+  pointer-events: none;
+  /* 适应深色模式：你可再根据主题变更颜色 */
+}
+.beian-footer a {
+  pointer-events: auto;
+  color: #999;
+  text-decoration: none;
+  transition: color 0.2s;
+  opacity: 0.85;
+}
+.beian-footer a:hover {
+  color: #188aec;
+  text-decoration: underline;
+  opacity: 1;
+}
+
+/* 如果登录框高度不够，手机版可以微调 */
+@media (max-width: 768px) {
+  .beian-footer {
+    font-size: 0.9em;
+    bottom: 8px;
   }
 }
 </style>

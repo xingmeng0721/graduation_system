@@ -82,6 +82,9 @@ class Group(models.Model):
             if self.advisor and not self.event.teachers.filter(pk=self.advisor.pk).exists():
                 raise ValidationError(f"指导老师 {self.advisor.teacher_name} 未参与此互选活动。")
 
+        if self.members.count() > self.MEMBERS_LIMIT:
+            raise ValidationError(f"团队成员人数不能超过 {self.MEMBERS_LIMIT} 人（含队长）。")
+
     def __str__(self):
         return self.group_name
 

@@ -56,17 +56,17 @@ class SendResetCodeView(views.APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        stu_name = request.data.get("stu_name")
+        stu_no = request.data.get("stu_no")
         email = request.data.get("email")
 
-        if not stu_name or not email:
-            return Response({"error": "姓名和邮箱不能为空"}, status=status.HTTP_400_BAD_REQUEST)
+        if not stu_no or not email:
+            return Response({"error": "学号和邮箱不能为空"}, status=status.HTTP_400_BAD_REQUEST)
 
         # 验证姓名与邮箱是否匹配数据库
         try:
-            student = Student.objects.get(stu_name=stu_name, email=email)
+            student = Student.objects.get(stu_no=stu_no, email=email)
         except Student.DoesNotExist:
-            return Response({"error": "姓名与邮箱不匹配或未注册"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "学号与邮箱不匹配或未注册"}, status=status.HTTP_404_NOT_FOUND)
 
         # 生成6位验证码
         code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
@@ -77,7 +77,7 @@ class SendResetCodeView(views.APIView):
         # 发送邮件
         send_mail(
             subject="找回密码验证码",
-            message=f"亲爱的 {stu_name}，\n您正在尝试重置密码，验证码是：{code}（10分钟内有效）。",
+            message=f"Ciallo(∠・ω< )⌒☆\n亲爱的 {stu_no}，\n您正在尝试重置密码，验证码是：{code}（10分钟内有效）。",
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[email],
         )
@@ -89,13 +89,13 @@ class ResetPasswordByCodeView(views.APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        stu_name = request.data.get("stu_name")
+        stu_no = request.data.get("stu_no")
         email = request.data.get("email")
         code = request.data.get("code")
         new_password = request.data.get("password")
 
-        if not all([stu_name, email, code, new_password]):
-            return Response({"error": "姓名、邮箱、验证码和新密码都不能为空"}, status=status.HTTP_400_BAD_REQUEST)
+        if not all([stu_no, email, code, new_password]):
+            return Response({"error": "学号、邮箱、验证码和新密码都不能为空"}, status=status.HTTP_400_BAD_REQUEST)
 
         # 查验证码
         try:
@@ -111,9 +111,9 @@ class ResetPasswordByCodeView(views.APIView):
 
         # 检查姓名和邮箱是否匹配学生
         try:
-            student = Student.objects.get(stu_name=stu_name, email=email)
+            student = Student.objects.get(stu_no=stu_no, email=email)
         except Student.DoesNotExist:
-            return Response({"error": "姓名与邮箱不匹配"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "学号与邮箱不匹配"}, status=status.HTTP_404_NOT_FOUND)
 
         # 更新密码
         student.set_password(new_password)
