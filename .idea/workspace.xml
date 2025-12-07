@@ -4,15 +4,22 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="5a3f43bc-5135-4223-8a01-96f06d2dbf59" name="更改" comment="token修改">
+    <list default="true" id="5a3f43bc-5135-4223-8a01-96f06d2dbf59" name="更改" comment="11180930">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/classwork/adminapp/authentication.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/adminapp/authentication.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/classwork/adminapp/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/adminapp/serializers.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/classwork/adminapp/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/adminapp/views.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/classwork/studentapp/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/studentapp/models.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/classwork/studentapp/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/studentapp/serializers.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/classwork/teamapp/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/teamapp/models.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/classwork/teamapp/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/teamapp/serializers.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/classwork/teamapp/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/classwork/teamapp/views.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wcfrontend/src/components/login.vue" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/components/login.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wcfrontend/src/pages/AssignmentResults.vue" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/pages/AssignmentResults.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wcfrontend/src/pages/GroupManagement.vue" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/pages/GroupManagement.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wcfrontend/src/pages/MutualSelectionManagement.vue" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/pages/MutualSelectionManagement.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wcfrontend/src/pages/StudentManagement.vue" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/pages/StudentManagement.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/wcfrontend/src/pages/StudentProfile.vue" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/pages/StudentProfile.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/wcfrontend/src/pages/StudentTeam.vue" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/pages/StudentTeam.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wcfrontend/src/plugins/axios.js" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/plugins/axios.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wcfrontend/src/services/api.js" beforeDir="false" afterPath="$PROJECT_DIR$/wcfrontend/src/services/api.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -111,7 +118,7 @@
       <recent name="D:\DjangoProject\django\classwork\studentapp" />
     </key>
   </component>
-  <component name="RunManager" selected="Django 服务器.未命名">
+  <component name="RunManager" selected="npm.dev">
     <configuration name="未命名" type="Python.DjangoServer" factoryName="Django server" nameIsGenerated="true">
       <module name="django" />
       <option name="ENV_FILES" value="" />
@@ -193,6 +200,10 @@
       <workItem from="1763028395355" duration="7050000" />
       <workItem from="1763340792937" duration="4988000" />
       <workItem from="1763380481946" duration="1153000" />
+      <workItem from="1763428761440" duration="7299000" />
+      <workItem from="1763538750677" duration="1554000" />
+      <workItem from="1764169235393" duration="638000" />
+      <workItem from="1765135888733" duration="6186000" />
     </task>
     <task id="LOCAL-00001" summary="第一版">
       <option name="closed" value="true" />
@@ -338,7 +349,15 @@
       <option name="project" value="LOCAL" />
       <updated>1763030862469</updated>
     </task>
-    <option name="localTasksCounter" value="19" />
+    <task id="LOCAL-00019" summary="11180930">
+      <option name="closed" value="true" />
+      <created>1763428807379</created>
+      <option name="number" value="00019" />
+      <option name="presentableId" value="LOCAL-00019" />
+      <option name="project" value="LOCAL" />
+      <updated>1763428807379</updated>
+    </task>
+    <option name="localTasksCounter" value="20" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -379,7 +398,8 @@
     <MESSAGE value="v2" />
     <MESSAGE value="测试后修正" />
     <MESSAGE value="token修改" />
-    <option name="LAST_COMMIT_MESSAGE" value="token修改" />
+    <MESSAGE value="11180930" />
+    <option name="LAST_COMMIT_MESSAGE" value="11180930" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -395,7 +415,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/classwork/teamapp/views.py</url>
-          <line>312</line>
+          <line>338</line>
           <option name="timeStamp" value="13" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -410,23 +430,13 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/classwork/teamapp/serializers.py</url>
-          <line>197</line>
+          <line>198</line>
           <option name="timeStamp" value="23" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/classwork/teamapp/views.py</url>
-          <line>211</line>
+          <line>237</line>
           <option name="timeStamp" value="28" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/classwork/teamapp/serializers.py</url>
-          <line>57</line>
-          <option name="timeStamp" value="30" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/classwork/adminapp/serializers.py</url>
-          <line>191</line>
-          <option name="timeStamp" value="31" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/classwork/teamapp/views.py</url>
@@ -438,9 +448,19 @@
           <line>39</line>
           <option name="timeStamp" value="34" />
         </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/classwork/adminapp/views.py</url>
+          <line>593</line>
+          <option name="timeStamp" value="36" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/classwork/teamapp/serializers.py</url>
+          <line>156</line>
+          <option name="timeStamp" value="37" />
+        </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/wcfrontend/src/pages/StudentManagement.vue</url>
-          <line>424</line>
+          <line>448</line>
           <option name="timeStamp" value="3" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
@@ -456,11 +476,6 @@
           <url>file://$PROJECT_DIR$/wcfrontend/src/pages/TeacherTeamSelection.vue</url>
           <line>156</line>
           <option name="timeStamp" value="32" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="javascript">
-          <url>file://$PROJECT_DIR$/wcfrontend/src/pages/StudentTeam.vue</url>
-          <line>494</line>
-          <option name="timeStamp" value="35" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

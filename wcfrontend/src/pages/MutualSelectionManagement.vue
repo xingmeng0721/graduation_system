@@ -143,66 +143,82 @@
         <el-divider content-position="left">参与人员</el-divider>
 
         <!-- 选择教师 -->
-      <el-form-item label="选择教师">
-        <div class="selection-toolbar">
-        <el-input
-        v-model="teacherSearch"
-        placeholder="搜索教师姓名或工号"
-        size="small"
-        clearable
-        style="width: 200px;"
-        />
-        <el-button size="small" @click="selectAllTeachers">全选</el-button>
-        <el-button size="small" @click="deselectAllTeachers">清空</el-button>
-        <el-tag type="info">已选择 {{ currentEvent.teachers.length }} 人</el-tag>
-        </div>
-        <AdvancedMultiSelect v-model="currentEvent.teachers" :items="filteredTeacherOptions" />
-      </el-form-item>
+<div class="section-card">
+  <div class="section-title">选择教师</div>
+
+  <div class="selection-toolbar">
+    <el-input
+      v-model="teacherSearch"
+      placeholder="搜索教师姓名或工号"
+      size="small"
+      clearable
+      style="width: 200px;"
+    />
+    <el-button size="small" @click="selectAllTeachers">全选</el-button>
+    <el-button size="small" @click="deselectAllTeachers">清空</el-button>
+    <el-tag type="info">已选择 {{ currentEvent.teachers.length }} 人</el-tag>
+  </div>
+
+  <AdvancedMultiSelect
+    v-model="currentEvent.teachers"
+    :items="filteredTeacherOptions"
+  />
+</div>
 
         <!-- 选择学生 -->
-        <el-form-item label="选择学生">
-          <div class="selection-toolbar">
-            <el-input
-              v-model="studentSearch"
-              placeholder="搜索学生姓名或学号"
-              size="small"
-              clearable
-              style="width: 200px;"
-            />
-            <el-select
-              v-model="studentGradeFilter"
-              placeholder="所有年级"
-              clearable
-              size="small"
-              style="width: 150px;"
-            >
-              <el-option
-                v-for="grade in uniqueGrades"
-                :key="grade"
-                :label="grade"
-                :value="grade"
-              />
-            </el-select>
-            <el-select
-              v-model="studentMajorFilter"
-              placeholder="所有专业"
-              clearable
-              size="small"
-              style="width: 150px;"
-            >
-              <el-option
-                v-for="major in allMajors"
-                :key="major.major_id"
-                :label="major.major_name"
-                :value="major.major_name"
-              />
-            </el-select>
-            <el-button size="small" @click="selectAllFilteredStudents">全选当前</el-button>
-            <el-button size="small" @click="deselectAllStudents">清空</el-button>
-            <el-tag type="info">已选择 {{ currentEvent.students.length }} 人</el-tag>
-          </div>
-          <AdvancedMultiSelect v-model="currentEvent.students" :items="filteredStudentOptions" />
-        </el-form-item>
+        <div class="section-card">
+  <div class="section-title">选择学生</div>
+
+  <div class="selection-toolbar">
+    <el-input
+      v-model="studentSearch"
+      placeholder="搜索学生姓名或学号"
+      size="small"
+      clearable
+      style="width: 200px;"
+    />
+
+    <el-select
+      v-model="studentGradeFilter"
+      placeholder="所有年级"
+      clearable
+      size="small"
+      style="width: 150px;"
+    >
+      <el-option
+        v-for="grade in uniqueGrades"
+        :key="grade"
+        :label="grade"
+        :value="grade"
+      />
+    </el-select>
+
+    <el-select
+      v-model="studentMajorFilter"
+      placeholder="所有专业"
+      clearable
+      size="small"
+      style="width: 150px;"
+    >
+      <el-option
+        v-for="major in allMajors"
+        :key="major.major_id"
+        :label="major.major_name"
+        :value="major.major_name"
+      />
+    </el-select>
+
+    <el-button size="small" @click="selectAllFilteredStudents">全选当前</el-button>
+    <el-button size="small" @click="deselectAllStudents">清空</el-button>
+
+    <el-tag type="info">已选择 {{ currentEvent.students.length }} 人</el-tag>
+  </div>
+
+  <AdvancedMultiSelect
+    v-model="currentEvent.students"
+    :items="filteredStudentOptions"
+  />
+</div>
       </el-form>
 
       <template #footer>
@@ -530,5 +546,23 @@ const getStatusType = (status) => {
     align-items: flex-start;
     gap: 12px;
   }
+}
+
+
+.section-card {
+  padding: 16px;
+  margin-bottom: 20px;
+  border: 1px solid #dcdfe6;
+  border-radius: 8px;
+  background: #f9fafc;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #409eff;
+  margin-bottom: 12px;
+  border-left: 4px solid #409eff;
+  padding-left: 8px;
 }
 </style>

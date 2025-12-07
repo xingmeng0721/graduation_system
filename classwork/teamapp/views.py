@@ -90,29 +90,55 @@ class TeamViewSet(viewsets.GenericViewSet):
     def dashboard(self, request):
         student = request.user
         if not isinstance(student, Student):
-            return Response(
-                {'error': '当前用户不是学生账号'},
-                status=status.HTTP_403_FORBIDDEN
-            )
+            return Response({'error': '当前用户不是学生账号'}, status=status.HTTP_403_FORBIDDEN)
 
-        active_event = self.get_active_event_for_student(student)
+        now = timezone.now()
+
+        # 1. 修改查询逻辑：
+        # 查找当前时间已经开始（stu_start_time <= now），
+        # 并且 教师结束时间还没过（tea_end_time >= now）的活动。
+        # 这样涵盖了：学生互选期 + 教师互选期
+        active_event = MutualSelectionEvent.objects.filter(
+            students=student,
+            stu_start_time__lte=now,
+            tea_end_time__gte=now
+        ).first()
+
+        # 如果上面没找到，再试着找一下刚刚结束但还没完全归档的（可选，视需求而定）
+        # 这里我们假设只要 tea_end_time 还没过，学生就能看到
+
         response_data = {
             'has_active_event': active_event is not None,
             'active_event_info': None,
             'my_team_info': None,
-            'is_captain': False
+            'is_captain': False,
+            'is_editable': False,  # 新增字段：控制前端按钮显示
+            'phase_status': 'none'  # 新增字段：告知前端当前处于什么阶段
         }
 
         if active_event:
+            # 判断当前所处阶段
+            if now <= active_event.stu_end_time:
+                is_editable = True
+                phase_status = 'student_selection'  # 学生互选进行中
+            else:
+                is_editable = False
+                phase_status = 'teacher_selection'  # 学生已结束，导师选人中/等待结果
+
             response_data['active_event_info'] = {
                 'event_id': active_event.event_id,
                 'event_name': active_event.event_name,
-                'end_time': active_event.stu_end_time
+                'end_time': active_event.stu_end_time,  # 依然返回学生截止时间
+                'tea_end_time': active_event.tea_end_time  # 返回教师截止时间
             }
+            response_data['is_editable'] = is_editable
+            response_data['phase_status'] = phase_status
 
+            # 获取团队信息
             membership = self.get_student_membership_in_event(student, active_event)
             if membership:
                 group = membership.group
+                # 使用 GroupDetailSerializer 获取完整信息
                 response_data['my_team_info'] = GroupDetailSerializer(group).data
                 response_data['is_captain'] = (group.captain == student)
 
@@ -580,6 +606,52 @@ class TeamViewSet(viewsets.GenericViewSet):
             {'error': '您没有权限查看该团队信息'},
             status=status.HTTP_403_FORBIDDEN
         )
+
+    @action(detail=False, methods=['post'], url_path='my-team/transfer-captain')
+    @transaction.atomic
+    def transfer_captain(self, request):
+        """
+        队长转让权限给其他队员
+        """
+        student = request.user
+        if not isinstance(student, Student):
+            return Response({'error': '当前用户不是学生账号'}, status=status.HTTP_403_FORBIDDEN)
+
+        # 1. 检查活动有效性
+        active_event = self.get_active_event_for_student(student)
+        if not active_event:
+            return Response({'error': '当前没有进行中的互选活动，无法操作'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 2. 检查是否是队长
+        group = self.get_student_captained_group_in_event(student, active_event)
+        if not group:
+            return Response({'error': '您不是队长，无法转让权限'}, status=status.HTTP_403_FORBIDDEN)
+
+        # 3. 获取目标成员ID
+        target_student_id = request.data.get('student_id')
+        if not target_student_id:
+            return Response({'error': '必须指定新队长的ID'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            target_student = Student.objects.get(pk=target_student_id)
+        except Student.DoesNotExist:
+            return Response({'error': '目标学生不存在'}, status=status.HTTP_404_NOT_FOUND)
+
+        # 4. 检查目标是否在团队内
+        if not group.members.filter(pk=target_student_id).exists():
+            return Response({'error': '该学生不是团队成员，无法转让队长'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 5. 执行转让
+        old_captain_name = student.stu_name
+        new_captain_name = target_student.stu_name
+
+        group.captain = target_student
+        group.save()
+
+        return Response({
+            'message': f'队长权限已成功从 {old_captain_name} 转让给 {new_captain_name}',
+            'new_captain_id': target_student.stu_id
+        }, status=status.HTTP_200_OK)
 
     # --- 教师端 API ---
 

@@ -20,13 +20,13 @@ class StudentProfileSerializer(serializers.ModelSerializer):
         model = Student
         fields = [
             'stu_id', 'stu_no', 'stu_name', 'grade', 'phone', 'major', 'email',
-            'old_password', 'new_password', 'confirm_password'
+            'old_password', 'new_password', 'confirm_password', 'internship_location'
         ]
         read_only_fields = ['stu_id', 'stu_no', 'stu_name']
 
     def validate(self, data):
         """
-        [新增] 在这里验证密码更改请求。
+        验证密码更改请求
         """
         user = self.instance
         old_password = data.get('old_password')
@@ -53,7 +53,7 @@ class StudentProfileSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         """
-        [新增] 重写 update 方法以正确处理密码。
+        重写 update 方法以正确处理密码。
         """
         new_password = validated_data.pop('new_password', None)
         validated_data.pop('old_password', None)

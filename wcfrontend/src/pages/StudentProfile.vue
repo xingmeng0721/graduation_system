@@ -87,21 +87,35 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-  <el-form-item label="电子邮箱">
-    <div v-if="isEditing" class="email-wrapper">
-      <el-autocomplete
-        v-model="editableStudent.email"
-        :fetch-suggestions="querySearchEmail"
-        placeholder="请输入邮箱，例如 zhangsan@qq.com"
-        class="email-input"
-        clearable
-        :trigger-on-focus="false"
-      />
-    </div>
-    <el-input v-else :value="student.email || '未填写'" disabled />
-  </el-form-item>
-</el-col>
+          <el-form-item label="电子邮箱">
+            <div v-if="isEditing" class="email-wrapper">
+              <el-autocomplete
+                v-model="editableStudent.email"
+                :fetch-suggestions="querySearchEmail"
+                placeholder="请输入邮箱，例如 zhangsan@qq.com"
+                class="email-input"
+                clearable
+                :trigger-on-focus="false"
+              />
+            </div>
+            <el-input v-else :value="student.email || '未填写'" disabled />
+          </el-form-item>
+        </el-col>
         </el-row>
+
+        <el-row :gutter="20">
+        <el-col :span="12">
+          <el-form-item label="实习地点">
+            <el-input
+              v-if="isEditing"
+              v-model="editableStudent.internship_location"
+              placeholder="请输入实习地点"
+              clearable
+            />
+            <el-input v-else :value="student.internship_location || '未填写'" disabled />
+          </el-form-item>
+        </el-col>
+      </el-row>
 
         <!-- 密码修改区域 -->
         <template v-if="isEditing">
@@ -183,6 +197,7 @@ const editableStudent = reactive({
   major: '',
   phone: '',
   email: '',
+  internship_location: '',
   old_password: '',
   new_password: '',
   confirm_password: ''
@@ -229,6 +244,7 @@ const startEditing = () => {
   editableStudent.major = student.value.major
   editableStudent.phone = student.value.phone || ''
   editableStudent.email = student.value.email || ''
+  editableStudent.internship_location = student.value.internship_location || ''
   editableStudent.old_password = ''
   editableStudent.new_password = ''
   editableStudent.confirm_password = ''

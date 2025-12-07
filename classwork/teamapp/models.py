@@ -10,7 +10,6 @@ class Group(models.Model):
     group_name = models.CharField(max_length=255, verbose_name='分组名称')
     project_title = models.CharField(max_length=255, verbose_name="项目标题", blank=True)
     project_description = models.TextField(verbose_name="项目简介", blank=True)
-    MEMBERS_LIMIT = 4
 
     event = models.ForeignKey(
         'adminapp.MutualSelectionEvent',

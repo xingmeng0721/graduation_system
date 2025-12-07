@@ -98,7 +98,7 @@ class StudentManagementSerializer(serializers.ModelSerializer):
     major = serializers.CharField(write_only=True, required=True, label="专业名称")
     class Meta:
         model = Student
-        fields = ['stu_id', 'stu_no', 'stu_name', 'password', 'grade', 'phone', 'major','email']
+        fields = ['stu_id', 'stu_no', 'stu_name', 'password', 'grade', 'phone', 'major','email', 'internship_location']
         extra_kwargs = {
             'password': {'write_only': True, 'required': False, 'allow_blank': True},
             'phone': {'required': False, 'allow_blank': True},
@@ -147,7 +147,7 @@ class StudentListSerializer(serializers.ModelSerializer):
         model = Student
         fields = [
             'stu_id', 'stu_no', 'stu_name', 'grade', 'phone', 'email',
-            'major_name', 'team_info', 'is_captain'
+            'major_name', 'team_info', 'is_captain', 'internship_location'
         ]
 
     def get_team_info(self, obj: Student):

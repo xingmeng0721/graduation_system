@@ -18,7 +18,8 @@ class TeamMemberSerializer(serializers.ModelSerializer):
         model = Student
         fields = [
             'stu_id', 'stu_no', 'stu_name', 'grade',
-            'major_name', 'phone', 'email', 'is_captain'
+            'major_name', 'phone', 'email', 'is_captain',
+            'internship_location'
         ]
 
     def get_is_captain(self, obj):

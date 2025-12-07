@@ -151,6 +151,8 @@ export default {
     });
   },
 
+
+
   // ========================================
   // 教师管理 (Teacher Management)
   // ========================================
@@ -262,6 +264,10 @@ export default {
 
   removeMember(memberId) {
     return apiClient.post(`${TEAM_BASE}my-team/remove-member/`, { student_id: memberId });
+  },
+
+    transferCaptain(memberId) {
+    return apiClient.post(`${TEAM_BASE}my-team/transfer-captain/`, { student_id: memberId });
   },
 
   // 可用资源
